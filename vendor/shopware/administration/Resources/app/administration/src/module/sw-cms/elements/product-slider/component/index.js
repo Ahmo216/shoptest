@@ -6,6 +6,8 @@ const { Component, Mixin } = Shopware;
 Component.register('sw-cms-el-product-slider', {
     template,
 
+    inject: ['feature'],
+
     mixins: [
         Mixin.getByName('cms-element')
     ],
@@ -29,7 +31,7 @@ Component.register('sw-cms-el-product-slider', {
                         value: this.element.config.displayMode.value
                     }
                 },
-                data: {
+                data: this.feature.isActive('FEATURE_NEXT_10078') ? null : {
                     product: {
                         name: 'Lorem ipsum dolor',
                         description: `Lorem ipsum dolor sit amet, consetetur sadipscing elitr,
@@ -126,7 +128,7 @@ Component.register('sw-cms-el-product-slider', {
                 return;
             }
 
-            if (parseInt(this.element.config.elMinWidth.value.replace('px', ''), 0) <= 0) {
+            if (parseInt(this.element.config.elMinWidth.value.replace('px', ''), 10) <= 0) {
                 return;
             }
 
@@ -134,7 +136,7 @@ Component.register('sw-cms-el-product-slider', {
             const fakeLookWidth = 100;
             const boxWidth = this.$refs.productHolder.offsetWidth;
             const elGap = 32;
-            let elWidth = parseInt(this.element.config.elMinWidth.value.replace('px', ''), 0);
+            let elWidth = parseInt(this.element.config.elMinWidth.value.replace('px', ''), 10);
 
             if (elWidth >= 300) {
                 elWidth -= fakeLookWidth;

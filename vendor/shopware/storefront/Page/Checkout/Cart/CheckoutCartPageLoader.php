@@ -77,6 +77,10 @@ class CheckoutCartPageLoader
 
         $page = CheckoutCartPage::createFrom($page);
 
+        if ($page->getMetaInformation()) {
+            $page->getMetaInformation()->setRobots('noindex,follow');
+        }
+
         $page->setCountries($this->getCountries($salesChannelContext));
 
         $page->setPaymentMethods($this->getPaymentMethods($salesChannelContext));
@@ -106,13 +110,22 @@ class CheckoutCartPageLoader
         $request->query->set('onlyAvailable', true);
 
         /* @var ShippingMethodCollection $shippingMethods */
-        return $this->shippingMethodRoute
+        $shippingMethods = $this->shippingMethodRoute
             ->load($request, $context, new Criteria())
             ->getShippingMethods();
+
+        if (!$shippingMethods->has($context->getShippingMethod()->getId())) {
+            $shippingMethods->add($context->getShippingMethod());
+        }
+
+        return $shippingMethods;
     }
 
     private function getCountries(SalesChannelContext $context): CountryCollection
     {
-        return $this->countryRoute->load(new Criteria(), $context)->getCountries();
+        $countries = $this->countryRoute->load(new Criteria(), $context)->getCountries();
+        $countries->sortByPositionAndName();
+
+        return $countries;
     }
 }

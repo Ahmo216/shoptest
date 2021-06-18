@@ -2,8 +2,10 @@
 
 namespace Shopware\Core\Content\Product;
 
+use Shopware\Core\Checkout\Customer\Aggregate\CustomerWishlistProduct\CustomerWishlistProductDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemDefinition;
 use Shopware\Core\Content\Category\CategoryDefinition;
+use Shopware\Core\Content\Cms\CmsPageDefinition;
 use Shopware\Core\Content\Product\Aggregate\ProductCategory\ProductCategoryDefinition;
 use Shopware\Core\Content\Product\Aggregate\ProductCategoryTree\ProductCategoryTreeDefinition;
 use Shopware\Core\Content\Product\Aggregate\ProductConfiguratorSetting\ProductConfiguratorSettingDefinition;
@@ -62,6 +64,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Field\TranslationsAssociationFi
 use Shopware\Core\Framework\DataAbstractionLayer\Field\VersionField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\WhitelistRuleField;
 use Shopware\Core\Framework\DataAbstractionLayer\FieldCollection;
+use Shopware\Core\Framework\Feature;
 use Shopware\Core\System\CustomField\Aggregate\CustomFieldSet\CustomFieldSetDefinition;
 use Shopware\Core\System\DeliveryTime\DeliveryTimeDefinition;
 use Shopware\Core\System\NumberRange\DataAbstractionLayer\NumberRangeField;
@@ -100,9 +103,14 @@ class ProductDefinition extends EntityDefinition
             'minPurchase' => 1,
             'purchaseSteps' => 1,
             'shippingFree' => false,
-            'restockTime' => 3,
+            'restockTime' => null,
             'active' => true,
         ];
+    }
+
+    public function since(): ?string
+    {
+        return '6.0.0.0';
     }
 
     protected function defineFields(): FieldCollection
@@ -270,6 +278,27 @@ class ProductDefinition extends EntityDefinition
         $collection->add(
             (new TranslatedField('customSearchKeywords'))
                 ->addFlags(new Inherited(), new SearchRanking(SearchRanking::HIGH_SEARCH_RANKING))
+        );
+
+        $collection->add(
+            (new OneToManyAssociationField('wishlists', CustomerWishlistProductDefinition::class, 'product_id'))->addFlags(new CascadeDelete())
+        );
+
+        if (Feature::isActive('FEATURE_NEXT_10078')) {
+            $collection->add(
+                (new FkField('cms_page_id', 'cmsPageId', CmsPageDefinition::class))->addFlags(new Inherited())
+            );
+            $collection->add(
+                (new ManyToOneAssociationField('cmsPage', 'cms_page_id', CmsPageDefinition::class, 'id', false))->addFlags(new Inherited())
+            );
+        }
+
+        $collection->add(
+            (new FkField('canonical_product_id', 'canonicalProductId', ProductDefinition::class))->addFlags(new Inherited())
+        );
+
+        $collection->add(
+            (new ManyToOneAssociationField('canonicalProduct', 'canonical_product_id', ProductDefinition::class, 'id'))->addFlags(new Inherited())
         );
 
         return $collection;

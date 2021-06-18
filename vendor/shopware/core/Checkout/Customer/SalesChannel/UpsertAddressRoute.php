@@ -3,7 +3,6 @@
 namespace Shopware\Core\Checkout\Customer\SalesChannel;
 
 use OpenApi\Annotations as OA;
-use Shopware\Core\Checkout\Cart\Exception\CustomerNotLoggedInException;
 use Shopware\Core\Checkout\Customer\Aggregate\CustomerAddress\CustomerAddressEntity;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Checkout\Customer\CustomerEvents;
@@ -11,7 +10,9 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\Event\DataMappingEvent;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
+use Shopware\Core\Framework\Routing\Annotation\LoginRequired;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\Framework\Validation\BuildValidationEvent;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
@@ -76,9 +77,10 @@ class UpsertAddressRoute extends AbstractUpsertAddressRoute
     }
 
     /**
+     * @Since("6.3.2.0")
      * @OA\Post(
      *      path="/account/address",
-     *      description="Create a new address",
+     *      summary="Create a new address",
      *      operationId="createCustomerAddress",
      *      tags={"Store API", "Account", "Address"},
      *      @OA\RequestBody(@OA\JsonContent(ref="#/components/schemas/customer_address_flat")),
@@ -90,23 +92,32 @@ class UpsertAddressRoute extends AbstractUpsertAddressRoute
      * )
      * @OA\Patch(
      *      path="/account/address/{addressId}",
-     *      description="Update address",
+     *      summary="Update address",
      *      operationId="updateCustomerAddress",
      *      tags={"Store API", "Account", "Address"},
      *      @OA\RequestBody(@OA\JsonContent(ref="#/components/schemas/customer_address_flat")),
+     *      @OA\Parameter(
+     *        name="addressId",
+     *        in="path",
+     *        description="Address ID",
+     *        @OA\Schema(type="string"),
+     *        required=true
+     *      ),
      *      @OA\Response(
      *          response="200",
      *          description="",
      *          @OA\JsonContent(ref="#/components/schemas/customer_address_flat")
      *     )
      * )
+     * @LoginRequired()
      * @Route(path="/store-api/v{version}/account/address", name="store-api.account.address.create", methods={"POST"}, defaults={"addressId": null})
      * @Route(path="/store-api/v{version}/account/address/{addressId}", name="store-api.account.address.update", methods={"PATCH"})
      */
-    public function upsert(?string $addressId, RequestDataBag $data, SalesChannelContext $context): UpsertAddressRouteResponse
+    public function upsert(?string $addressId, RequestDataBag $data, SalesChannelContext $context, ?CustomerEntity $customer = null): UpsertAddressRouteResponse
     {
-        if (!$context->getCustomer()) {
-            throw new CustomerNotLoggedInException();
+        /* @deprecated tag:v6.4.0 - Parameter $customer will be mandatory when using with @LoginRequired() */
+        if (!$customer) {
+            $customer = $context->getCustomer();
         }
 
         if (!$addressId) {
@@ -144,7 +155,7 @@ class UpsertAddressRoute extends AbstractUpsertAddressRoute
 
         $addressData = $mappingEvent->getOutput();
         $addressData['id'] = $addressId;
-        $addressData['customerId'] = $context->getCustomer()->getId();
+        $addressData['customerId'] = $customer->getId();
 
         $this->addressRepository->upsert([$addressData], $context->getContext());
 

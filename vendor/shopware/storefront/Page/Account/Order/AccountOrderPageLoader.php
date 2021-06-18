@@ -70,6 +70,10 @@ class AccountOrderPageLoader
 
         $page = AccountOrderPage::createFrom($page);
 
+        if ($page->getMetaInformation()) {
+            $page->getMetaInformation()->setRobots('noindex,follow');
+        }
+
         $page->setOrders(StorefrontSearchResult::createFrom($this->getOrders($request, $salesChannelContext)));
 
         $page->setDeepLinkCode($request->get('deepLinkCode'));
@@ -93,6 +97,12 @@ class AccountOrderPageLoader
     {
         $criteria = $this->createCriteria($request);
         $apiRequest = new Request();
+
+        // Add email and zipcode for guest customer verification in order view
+        if ($request->get('email', false) && $request->get('zipcode', false)) {
+            $apiRequest->query->set('email', $request->get('email'));
+            $apiRequest->query->set('zipcode', $request->get('zipcode'));
+        }
 
         $event = new OrderRouteRequestEvent($request, $apiRequest, $context, $criteria);
         $this->eventDispatcher->dispatch($event);
@@ -119,6 +129,7 @@ class AccountOrderPageLoader
             ->addAssociation('lineItems.cover')
             ->addAssociation('addresses')
             ->addAssociation('currency')
+            ->addAssociation('documents.documentType')
             ->setLimit($limit)
             ->setOffset(($page - 1) * $limit)
             ->setTotalCountMode(Criteria::TOTAL_COUNT_MODE_NEXT_PAGES);

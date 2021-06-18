@@ -2,13 +2,17 @@
 
 namespace Shopware\Core\Framework\Api\Controller;
 
+use Doctrine\DBAL\Connection;
 use Shopware\Administration\Service\AdminOrderCartService;
 use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\Checkout\Cart\Processor;
+use Shopware\Core\Checkout\Cart\SalesChannel\AbstractCartOrderRoute;
+use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
 use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
 use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\Checkout\Promotion\Cart\PromotionCollector;
 use Shopware\Core\Content\Product\Cart\ProductCartProcessor;
+use Shopware\Core\Framework\Api\Context\AdminApiSource;
 use Shopware\Core\Framework\Api\Exception\InvalidSalesChannelIdException;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
@@ -17,9 +21,11 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Validation\EntityExists;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Routing\Exception\MissingRequestParameterException;
 use Shopware\Core\Framework\Routing\SalesChannelRequestContextResolver;
 use Shopware\Core\Framework\Util\Random;
+use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\Framework\Validation\DataBag\DataBag;
 use Shopware\Core\Framework\Validation\DataValidationDefinition;
 use Shopware\Core\Framework\Validation\DataValidator;
@@ -102,6 +108,21 @@ class SalesChannelProxyController extends AbstractController
      */
     private $contextService;
 
+    /**
+     * @var AbstractCartOrderRoute
+     */
+    private $orderRoute;
+
+    /**
+     * @var CartService
+     */
+    private $cartService;
+
+    /**
+     * @var Connection
+     */
+    private $connection;
+
     public function __construct(
         KernelInterface $kernel,
         EntityRepositoryInterface $salesChannelRepository,
@@ -110,7 +131,10 @@ class SalesChannelProxyController extends AbstractController
         SalesChannelRequestContextResolver $requestContextResolver,
         SalesChannelContextServiceInterface $contextService,
         EventDispatcherInterface $eventDispatcher,
-        AdminOrderCartService $adminOrderCartService
+        AdminOrderCartService $adminOrderCartService,
+        AbstractCartOrderRoute $orderRoute,
+        CartService $cartService,
+        Connection $connection
     ) {
         $this->kernel = $kernel;
         $this->salesChannelRepository = $salesChannelRepository;
@@ -120,9 +144,13 @@ class SalesChannelProxyController extends AbstractController
         $this->contextService = $contextService;
         $this->eventDispatcher = $eventDispatcher;
         $this->adminOrderCartService = $adminOrderCartService;
+        $this->orderRoute = $orderRoute;
+        $this->cartService = $cartService;
+        $this->connection = $connection;
     }
 
     /**
+     * @Since("6.2.0.0")
      * @Route("/api/v{version}/_proxy/sales-channel-api/{salesChannelId}/{_path}", name="api.proxy.sales-channel", requirements={"_path" = ".*"})
      * @Route("/api/v{version}/_proxy/store-api/{salesChannelId}/{_path}", name="api.proxy.store-api", requirements={"_path" = ".*"})
      *
@@ -141,6 +169,37 @@ class SalesChannelProxyController extends AbstractController
     }
 
     /**
+     * @Since("6.3.4.0")
+     * @Route("/api/v{version}/_proxy-order/{salesChannelId}", name="api.proxy-order.create")
+     *
+     * @throws InvalidSalesChannelIdException
+     * @throws InconsistentCriteriaIdsException
+     */
+    public function proxyCreateOrder(string $salesChannelId, Request $request, Context $context): Response
+    {
+        $this->fetchSalesChannel($salesChannelId, $context);
+
+        $salesChannelContext = $this->fetchSalesChannelContext($salesChannelId, $request);
+        $cart = $this->cartService->getCart($salesChannelContext->getToken(), $salesChannelContext);
+
+        $order = $this->orderRoute->order($cart, $salesChannelContext)->getOrder();
+
+        $orderId = $order->getId();
+        $userId = $context->getSource() instanceof AdminApiSource ? $context->getSource()->getUserId() : null;
+        $userId = $userId ? Uuid::fromHexToBytes($userId) : null;
+
+        $context->scope(Context::SYSTEM_SCOPE, function () use ($orderId, $userId): void {
+            $this->connection->executeUpdate(
+                'UPDATE `order` SET `created_by_id` = :createdById WHERE `id` = :id',
+                ['createdById' => $userId, 'id' => Uuid::fromHexToBytes($orderId)]
+            );
+        });
+
+        return new JsonResponse($order);
+    }
+
+    /**
+     * @Since("6.2.0.0")
      * @Route("/api/v{version}/_proxy/switch-customer", name="api.proxy.switch-customer", methods={"PATCH"})
      *
      * @throws InconsistentCriteriaIdsException
@@ -176,6 +235,7 @@ class SalesChannelProxyController extends AbstractController
     }
 
     /**
+     * @Since("6.2.0.0")
      * @Route("/api/v{version}/_proxy/modify-shipping-costs", name="api.proxy.modify-shipping-costs", methods={"PATCH"})
      *
      * @throws InconsistentCriteriaIdsException
@@ -202,25 +262,39 @@ class SalesChannelProxyController extends AbstractController
     }
 
     /**
+     * @Since("6.2.0.0")
      * @Route("/api/v{version}/_proxy/disable-automatic-promotions", name="api.proxy.disable-automatic-promotions", methods={"PATCH"})
      */
     public function disableAutomaticPromotions(Request $request): JsonResponse
     {
+        if (!$request->request->has(self::SALES_CHANNEL_ID)) {
+            throw new MissingRequestParameterException(self::SALES_CHANNEL_ID);
+        }
+
         $contextToken = $this->getContextToken($request);
 
-        $this->adminOrderCartService->addPermission($contextToken, PromotionCollector::SKIP_AUTOMATIC_PROMOTIONS);
+        $salesChannelId = $request->request->get('salesChannelId');
+
+        $this->adminOrderCartService->addPermission($contextToken, PromotionCollector::SKIP_AUTOMATIC_PROMOTIONS, $salesChannelId);
 
         return new JsonResponse();
     }
 
     /**
+     * @Since("6.2.0.0")
      * @Route("/api/v{version}/_proxy/enable-automatic-promotions", name="api.proxy.enable-automatic-promotions", methods={"PATCH"})
      */
     public function enableAutomaticPromotions(Request $request): JsonResponse
     {
+        if (!$request->request->has(self::SALES_CHANNEL_ID)) {
+            throw new MissingRequestParameterException(self::SALES_CHANNEL_ID);
+        }
+
         $contextToken = $this->getContextToken($request);
 
-        $this->adminOrderCartService->deletePermission($contextToken, PromotionCollector::SKIP_AUTOMATIC_PROMOTIONS);
+        $salesChannelId = $request->request->get('salesChannelId');
+
+        $this->adminOrderCartService->deletePermission($contextToken, PromotionCollector::SKIP_AUTOMATIC_PROMOTIONS, $salesChannelId);
 
         return new JsonResponse();
     }
@@ -366,7 +440,8 @@ class SalesChannelProxyController extends AbstractController
                 'paymentMethodId' => null,
                 'languageId' => null,
                 'currencyId' => null,
-            ]
+            ],
+            $context->getSalesChannel()->getId()
         );
         $event = new SalesChannelContextSwitchEvent($context, $data);
         $this->eventDispatcher->dispatch($event);
@@ -376,11 +451,13 @@ class SalesChannelProxyController extends AbstractController
     {
         $contextToken = $this->getContextToken($request);
 
-        $payload = $this->contextPersister->load($contextToken);
+        $salesChannelId = $request->request->get('salesChannelId');
 
-        if (!in_array(SalesChannelContextService::PERMISSIONS, $payload, true)) {
+        $payload = $this->contextPersister->load($contextToken, $salesChannelId);
+
+        if (!\in_array(SalesChannelContextService::PERMISSIONS, $payload, true)) {
             $payload[SalesChannelContextService::PERMISSIONS] = self::ADMIN_ORDER_PERMISSIONS;
-            $this->contextPersister->save($contextToken, $payload);
+            $this->contextPersister->save($contextToken, $payload, $salesChannelId);
         }
     }
 

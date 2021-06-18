@@ -616,9 +616,11 @@ class SalesChannelCartControllerTest extends TestCase
 
         $token = $browser->getServerParameter('HTTP_SW_CONTEXT_TOKEN');
 
-        $payload = $this->getContainer()->get(SalesChannelContextPersister::class)->load($token);
+        $payload = $this->getContainer()->get(SalesChannelContextPersister::class)->load($token, $browser->getServerParameter('test-sales-channel-id'));
+
         $payload[SalesChannelContextService::PERMISSIONS] = [ProductCartProcessor::ALLOW_PRODUCT_PRICE_OVERWRITES => true];
-        $this->getContainer()->get(SalesChannelContextPersister::class)->save($token, $payload);
+
+        $this->getContainer()->get(SalesChannelContextPersister::class)->save($token, $payload, $browser->getServerParameter('test-sales-channel-id'));
 
         $browser->request(
             'POST',

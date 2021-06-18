@@ -18,7 +18,6 @@ use Shopware\Core\Content\Product\Aggregate\ProductVisibility\ProductVisibilityD
 use Shopware\Core\Content\Product\Cart\ProductLineItemFactory;
 use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Test\TestCaseBase\IntegrationTestBehaviour;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
 use Shopware\Core\Framework\Test\TestCaseBase\RuleTestBehaviour;
@@ -28,6 +27,7 @@ use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextService;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\HttpFoundation\Request;
 
 class DocumentControllerTest extends TestCase
@@ -54,8 +54,6 @@ class DocumentControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        Feature::skipTestIfInActive('FEATURE_NEXT_10537', $this);
-
         parent::setUp();
 
         $this->connection = $this->getContainer()->get(Connection::class);
@@ -116,7 +114,7 @@ class DocumentControllerTest extends TestCase
             $request
         );
 
-        $browser = KernelLifecycleManager::createBrowser(KernelLifecycleManager::getKernel());
+        $browser = $this->login('customer@example.com', 'shopware');
 
         $browser->request(
             'GET',
@@ -138,6 +136,23 @@ class DocumentControllerTest extends TestCase
         );
 
         static::assertEquals(400, $browser->getResponse()->getStatusCode());
+    }
+
+    private function login(string $email, string $password): KernelBrowser
+    {
+        $browser = KernelLifecycleManager::createBrowser($this->getKernel());
+        $browser->request(
+            'POST',
+            $_SERVER['APP_URL'] . '/account/login',
+            $this->tokenize('frontend.account.login', [
+                'username' => $email,
+                'password' => $password,
+            ])
+        );
+        $response = $browser->getResponse();
+        static::assertSame(200, $response->getStatusCode(), $response->getContent());
+
+        return $browser;
     }
 
     /**
@@ -213,7 +228,7 @@ class DocumentControllerTest extends TestCase
             'lastName' => 'Mustermann',
             'customerNumber' => '1337',
             'languageId' => Defaults::LANGUAGE_SYSTEM,
-            'email' => Uuid::randomHex() . '@example.com',
+            'email' => 'customer@example.com',
             'password' => 'shopware',
             'defaultPaymentMethodId' => $paymentMethodId,
             'groupId' => Defaults::FALLBACK_CUSTOMER_GROUP,

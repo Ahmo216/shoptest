@@ -17,6 +17,7 @@ use Shopware\Recovery\Install\DatabaseFactory;
 use Shopware\Recovery\Install\Requirements;
 use Shopware\Recovery\Install\RequirementsPath;
 use Shopware\Recovery\Install\Service\AdminService;
+use Shopware\Recovery\Install\Service\BlueGreenDeploymentService;
 use Shopware\Recovery\Install\Service\DatabaseService;
 use Shopware\Recovery\Install\Service\EnvConfigWriter;
 use Shopware\Recovery\Install\Service\ShopService;
@@ -24,12 +25,18 @@ use Shopware\Recovery\Install\Struct\AdminUser;
 use Shopware\Recovery\Install\Struct\DatabaseConnectionInformation;
 use Shopware\Recovery\Install\Struct\Shop;
 use Slim\Container;
+use Symfony\Component\Dotenv\Dotenv;
 
 if (empty($_SESSION)) {
     $sessionPath = str_replace('index.php', '', $_SERVER['SCRIPT_NAME']);
 
-    session_set_cookie_params(600, $sessionPath);
-    session_start();
+    if (!headers_sent()) {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_set_cookie_params(600, $sessionPath);
+        }
+
+        @session_start();
+    }
 }
 
 $config = require __DIR__ . '/../config/production.php';
@@ -130,6 +137,10 @@ $app->add(function (ServerRequestInterface $request, ResponseInterface $response
                 $_SESSION['parameters'][$key] = $value;
             }
         }
+    }
+
+    if (is_readable($container->offsetGet('env.path'))) {
+        (new Dotenv())->load($container->offsetGet('env.path'));
     }
 
     $allowedLanguages = $container->offsetGet('config')['languages'];
@@ -315,6 +326,10 @@ $app->any('/database-configuration/', function (ServerRequestInterface $request,
 
     $_SESSION['databaseConnectionInfo'] = $connectionInfo;
 
+    /** @var BlueGreenDeploymentService $blueGreenDeploymentService */
+    $blueGreenDeploymentService = $container->offsetGet('blue.green.deployment.service');
+    $blueGreenDeploymentService->setEnvironmentVariable();
+
     /** @var DatabaseService $databaseService */
     $databaseService = $container->offsetGet('database.service');
 
@@ -344,6 +359,14 @@ $app->any('/database-import/', function (ServerRequestInterface $request, Respon
 
     if ($request->getMethod() === 'POST') {
         return $response->withRedirect($menuHelper->getNextUrl());
+    }
+
+    if (!isset($_SESSION[BlueGreenDeploymentService::ENV_NAME])) {
+        $menuHelper->setCurrent('database-configuration');
+
+        return $this->renderer->render($response, 'database-configuration.php', [
+            'error' => $translationService->t('database-configuration_error_required_fields'),
+        ]);
     }
 
     try {
@@ -385,7 +408,7 @@ $app->any('/configuration/', function (ServerRequestInterface $request, Response
     $statement->execute();
 
     // formatting string e.g. "en-GB" to "GB"
-    $localeIsoCode = substr($localeForLanguage($_SESSION['language']), -2, 2);
+    $localeIsoCode = mb_substr($localeForLanguage($_SESSION['language']), -2, 2);
 
     // flattening array
     $countryIsos = array_map(function ($country) use ($localeIsoCode) {
@@ -422,6 +445,16 @@ $app->any('/configuration/', function (ServerRequestInterface $request, Response
         $systemConfigService = new SystemConfigService($db);
         $shopService = new ShopService($db, $systemConfigService);
         $adminService = new AdminService($db);
+
+        if (!isset($_SESSION[BlueGreenDeploymentService::ENV_NAME])) {
+            $menuHelper->setCurrent('database-configuration');
+
+            return $this->renderer->render($response, 'database-configuration.php', [
+                'error' => $translationService->t('database-configuration_error_required_fields'),
+            ]);
+        }
+
+        $_ENV[BlueGreenDeploymentService::ENV_NAME] = $_SESSION[BlueGreenDeploymentService::ENV_NAME];
 
         /** @var EnvConfigWriter $configWriter */
         $configWriter = $container->offsetGet('config.writer');
@@ -543,6 +576,14 @@ $app->any('/database-import/importDatabase', function (ServerRequestInterface $r
 
     $resultMapper = new ResultMapper();
 
+    if (!isset($_SESSION[BlueGreenDeploymentService::ENV_NAME])) {
+        return $response
+            ->withStatus(500)
+            ->write(json_encode($resultMapper->toExtJs(new ErrorResult('Session expired, please go back to database configuration.'))));
+    }
+
+    $_ENV[BlueGreenDeploymentService::ENV_NAME] = $_SESSION[BlueGreenDeploymentService::ENV_NAME];
+
     $parameters = $request->getParsedBody();
 
     $offset = isset($parameters['offset']) ? (int) $parameters['offset'] : 0;
@@ -566,7 +607,7 @@ $app->any('/database-import/importDatabase', function (ServerRequestInterface $r
     }
 
     if (!$total) {
-        $total = \count($coreMigrations->getExecutableMigrations()) * 2;
+        $total = count($coreMigrations->getExecutableMigrations()) * 2;
     }
 
     try {

@@ -7,6 +7,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\Entity;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepositoryInterface;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\Routing\Annotation\Route;
@@ -32,11 +33,12 @@ class CategoryListRoute extends AbstractCategoryListRoute
     }
 
     /**
+     * @Since("6.3.2.0")
      * @Entity("category")
      * @OA\Post(
      *      path="/category",
-     *      description="This route can be used to load categories",
-     *      operationId="readCategory",
+     *      summary="This route can be used to load categories",
+     *      operationId="readCategoryList",
      *      tags={"Store API", "Category"},
      *      @OA\Parameter(name="Api-Basic-Parameters"),
      *      @OA\Response(

@@ -7,6 +7,7 @@ use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Cart\Event\CartDeletedEvent;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\NoContentResponse;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\Routing\Annotation\Route;
@@ -39,11 +40,17 @@ class CartDeleteRoute extends AbstractCartDeleteRoute
     }
 
     /**
+     * @Since("6.3.0.0")
      * @OA\Delete(
      *      path="/checkout/cart",
-     *      description="Delete the cart",
+     *      summary="Delete the cart",
      *      operationId="deleteCart",
-     *      tags={"Store API", "Cart"}
+     *      tags={"Store API", "Cart"},
+     *      @OA\Response(
+     *          response="204",
+     *          description="Successfully deleted the cart",
+     *          @OA\JsonContent(ref="#/components/schemas/SuccessResponse")
+     *     )
      * )
      * @Route("/store-api/v{version}/checkout/cart", name="store-api.checkout.cart.delete", methods={"DELETE"})
      */

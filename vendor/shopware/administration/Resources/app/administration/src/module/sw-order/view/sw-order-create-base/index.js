@@ -477,7 +477,8 @@ Component.register('sw-order-create-base', {
 
         enableAutomaticPromotions() {
             this.updateLoading(true);
-            Service('cartStoreService').enableAutomaticPromotions(this.cart.token).then(() => {
+            const additionalParams = { salesChannelId: this.customer.salesChannelId };
+            Service('cartStoreService').enableAutomaticPromotions(this.cart.token, additionalParams).then(() => {
                 this.loadCart();
             });
         },

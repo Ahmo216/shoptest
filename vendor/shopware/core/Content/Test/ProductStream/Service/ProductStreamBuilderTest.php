@@ -13,6 +13,10 @@ use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\EntitySearchResult;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\ContainsFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\MultiFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\NotFilter;
+use Shopware\Core\Framework\Test\IdsCollection;
 use Shopware\Core\Framework\Test\TestCaseBase\IntegrationTestBehaviour;
 use Shopware\Core\Framework\Test\TestCaseBase\TaxAddToSalesChannelTestBehaviour;
 use Shopware\Core\Framework\Uuid\Uuid;
@@ -66,6 +70,70 @@ class ProductStreamBuilderTest extends TestCase
         static::assertCount(2, $products);
     }
 
+    public function testNestedFilters(): void
+    {
+        $ids = new IdsCollection();
+
+        $stream = [
+            'id' => $ids->get('stream'),
+            'name' => 'test2',
+            'filters' => [
+                [
+                    'type' => 'multi',
+                    'operator' => 'OR',
+                    'position' => 0,
+                    'queries' => [
+                        [
+                            'type' => 'multi',
+                            'operator' => 'AND',
+                            'position' => 0,
+                            'queries' => [
+                                [
+                                    'type' => 'contains',
+                                    'field' => 'name',
+                                    'value' => 'Awesome',
+                                    'position' => 0,
+                                ],
+                                [
+                                    'type' => 'not',
+                                    'position' => 1,
+                                    'queries' => [
+                                        [
+                                            'type' => 'contains',
+                                            'field' => 'name',
+                                            'value' => 'Copper',
+                                            'position' => 0,
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $this->getContainer()->get('product_stream.repository')
+            ->create([$stream], Context::createDefaultContext());
+
+        $filters = $this->getContainer()->get(ProductStreamBuilder::class)
+            ->buildFilters($ids->get('stream'), Context::createDefaultContext());
+
+        $expected = new MultiFilter(MultiFilter::CONNECTION_OR, [
+            new MultiFilter(MultiFilter::CONNECTION_AND, [
+                new ContainsFilter('product.name', 'Awesome'),
+                new NotFilter(MultiFilter::CONNECTION_AND, [
+                    new ContainsFilter('product.name', 'Copper'),
+                ]),
+            ]),
+        ]);
+
+        $filter = array_shift($filters);
+        static::assertInstanceOf(MultiFilter::class, $filter);
+
+        static::assertEquals($expected, $filter);
+    }
+
     public function testNoFilters(): void
     {
         $this->createTestEntityWithoutFilters();
@@ -89,7 +157,7 @@ class ProductStreamBuilderTest extends TestCase
     {
         $connection = $this->getContainer()->get(Connection::class);
 
-        $randomProductIds = implode('|', array_slice(array_column($this->createProducts(), 'id'), 0, 2));
+        $randomProductIds = implode('|', \array_slice(array_column($this->createProducts(), 'id'), 0, 2));
 
         $connection->exec(
             "

@@ -19,7 +19,7 @@ const blockRegistry = {};
 const mappingTypesCache = {};
 
 function registerCmsElement(config) {
-    if (!config.name || !config.component) {
+    if (!config.name || !config.component || config.flag === false) {
         return false;
     }
 
@@ -128,7 +128,7 @@ function getCmsElementRegistry() {
 }
 
 function registerCmsBlock(config) {
-    if (!config.name || !config.component) {
+    if (!config.name || !config.component || config.flag === false) {
         return false;
     }
 
@@ -235,6 +235,6 @@ function getPropertyByMappingPath(entity, propertyPath) {
             return null;
         }
 
-        return obj[key];
+        return (obj.translated && obj.translated[key]) || obj[key];
     }, entity);
 }

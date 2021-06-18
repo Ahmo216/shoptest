@@ -155,6 +155,10 @@ class ProductStreamIndexer extends EntityIndexer
 
     private function buildPayload($filter): string
     {
+        usort($filter, function (array $a, array $b) {
+            return $a['position'] <=> $b['position'];
+        });
+
         $nested = $this->buildNested($filter, null);
 
         $searchException = new SearchRequestException();
@@ -183,7 +187,7 @@ class ProductStreamIndexer extends EntityIndexer
             $parameters = $entity['parameters'];
             if ($parameters && \is_string($parameters)) {
                 $decodedParameters = json_decode($entity['parameters'], true);
-                if (json_last_error() === JSON_ERROR_NONE) {
+                if (json_last_error() === \JSON_ERROR_NONE) {
                     $entity['parameters'] = $decodedParameters;
                 }
             }

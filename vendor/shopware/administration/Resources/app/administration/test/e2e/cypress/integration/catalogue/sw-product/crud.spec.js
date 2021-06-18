@@ -58,14 +58,14 @@ describe('Product: Test crud operations', () => {
 
         // Check net price calculation
         cy.get('select[name=sw-field--product-taxId]').select('Standard rate');
-        cy.get('#sw-price-field-gross').type('10');
+        cy.get('.sw-list-price-field .sw-price-field-gross').eq(0).type('10');
         cy.wait('@calculatePrice').then(() => {
-            cy.get('#sw-price-field-net').should('have.value', '8.4');
+            cy.get('.sw-list-price-field .sw-price-field-net input').eq(0).should('have.value', '8.4');
         });
         cy.window().then((win) => {
-            cy.get('#sw-purchase-price-field-gross').type('1');
+            cy.get('.sw-purchase-price-field .sw-price-field-gross').type('1');
             cy.wait('@calculatePrice').then(() => {
-                cy.get('#sw-purchase-price-field-net').should('have.value', '0.84');
+                cy.get('.sw-purchase-price-field .sw-price-field-net input').should('have.value', '0.84');
             });
         });
 
@@ -77,6 +77,18 @@ describe('Product: Test crud operations', () => {
         cy.get('.sw-product-detail__select-visibility').typeMultiSelectAndCheck('Storefront');
         cy.get('.sw-product-detail__select-visibility .sw-select-selection-list__input')
             .type('{esc}');
+
+        // Check whether the default feature set has been assigned
+        cy.get('.sw-product-feature-set-form__form .sw-entity-single-select__selection')
+            .scrollIntoView()
+            .within(() => {
+                // There should be no placeholder
+                cy.get('.sw-entity-single-select__selection-text.is--placeholder')
+                    .should('not.exist');
+                // The default value should be already set instead
+                cy.get('.sw-entity-single-select__selection-text')
+                    .should('contain', 'Default');
+            });
 
         // Save product
         cy.get(page.elements.productSaveAction).click();

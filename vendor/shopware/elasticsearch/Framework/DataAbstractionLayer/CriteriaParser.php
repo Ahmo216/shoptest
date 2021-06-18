@@ -34,13 +34,16 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\MaxAg
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\MinAggregation;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\StatsAggregation;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Aggregation\Metric\SumAggregation;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\AndFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\ContainsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\Filter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\MultiFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\NotFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\OrFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\RangeFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\XOrFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Elasticsearch\Framework\ElasticsearchHelper;
 
@@ -95,7 +98,12 @@ class CriteriaParser
     {
         $fieldName = $this->buildAccessor($definition, $aggregation->getField(), $context);
 
-        $path = $this->getNestedPath($definition, $aggregation->getField());
+        $fields = $aggregation->getFields();
+
+        $path = null;
+        if (\count($fields) > 0) {
+            $path = $this->getNestedPath($definition, $fields[0]);
+        }
 
         $esAggregation = $this->createAggregation($aggregation, $fieldName, $definition, $context);
 
@@ -131,7 +139,7 @@ class CriteriaParser
                 return $this->parseRangeFilter($filter, $definition, $context);
 
             default:
-                throw new \RuntimeException(sprintf('Unsupported filter %s', get_class($filter)));
+                throw new \RuntimeException(sprintf('Unsupported filter %s', \get_class($filter)));
         }
     }
 
@@ -139,38 +147,63 @@ class CriteriaParser
     {
         $query = new BoolQuery();
         foreach ($aggregation->getFilter() as $filter) {
-            $query->add(
-                $this->parseFilter($filter, $definition, $definition->getEntityName(), $context)
-            );
+            $parsed = $this->parseFilter($filter, $definition, $definition->getEntityName(), $context);
+            if ($parsed instanceof NestedQuery) {
+                $parsed = $parsed->getQuery();
+            }
+            $query->add($parsed);
         }
 
         $filter = new Bucketing\FilterAggregation($aggregation->getName(), $query);
 
+        $nested = $aggregation->getAggregation();
+
+        if (!$nested) {
+            throw new \RuntimeException(sprintf('Filter aggregation %s contains no nested aggregation.', $aggregation->getName()));
+        }
+
         $filter->addAggregation(
-            $this->parseAggregation($aggregation->getAggregation(), $definition, $context)
+            $this->parseNestedAggregation($nested, $definition, $context)
         );
 
         return $filter;
     }
 
-    protected function parseTermsAggregation(TermsAggregation $aggregation, string $fieldName, EntityDefinition $definition, Context $context): CompositeAggregation
+    protected function parseTermsAggregation(TermsAggregation $aggregation, string $fieldName, EntityDefinition $definition, Context $context): AbstractAggregation
     {
+        if ($aggregation->getSorting() === null) {
+            $terms = new Bucketing\TermsAggregation($aggregation->getName(), $fieldName);
+
+            if ($nested = $aggregation->getAggregation()) {
+                $terms->addAggregation(
+                    $this->parseNestedAggregation($nested, $definition, $context)
+                );
+            }
+
+            // set default size to 10.000 => max for default configuration
+            $terms->addParameter('size', ElasticsearchHelper::MAX_SIZE_VALUE);
+
+            if ($aggregation->getLimit()) {
+                $terms->addParameter('size', (string) $aggregation->getLimit());
+            }
+
+            return $terms;
+        }
+
         $composite = new CompositeAggregation($aggregation->getName());
 
-        if ($aggregation->getSorting()) {
-            $accessor = $this->buildAccessor($definition, $aggregation->getSorting()->getField(), $context);
+        $accessor = $this->buildAccessor($definition, $aggregation->getSorting()->getField(), $context);
 
-            $sorting = new Bucketing\TermsAggregation($aggregation->getName() . '.sorting', $accessor);
-            $sorting->addParameter('order', $aggregation->getSorting()->getDirection());
-            $composite->addSource($sorting);
-        }
+        $sorting = new Bucketing\TermsAggregation($aggregation->getName() . '.sorting', $accessor);
+        $sorting->addParameter('order', $aggregation->getSorting()->getDirection());
+        $composite->addSource($sorting);
 
         $terms = new Bucketing\TermsAggregation($aggregation->getName() . '.key', $fieldName);
         $composite->addSource($terms);
 
-        if ($aggregation->getAggregation()) {
+        if ($nested = $aggregation->getAggregation()) {
             $composite->addAggregation(
-                $this->parseAggregation($aggregation->getAggregation(), $definition, $context)
+                $this->parseNestedAggregation($nested, $definition, $context)
             );
         }
 
@@ -214,13 +247,20 @@ class CriteriaParser
         );
         $composite->addSource($histogram);
 
-        if ($aggregation->getAggregation()) {
+        if ($nested = $aggregation->getAggregation()) {
             $composite->addAggregation(
-                $this->parseAggregation($aggregation->getAggregation(), $definition, $context)
+                $this->parseNestedAggregation($nested, $definition, $context)
             );
         }
 
         return $composite;
+    }
+
+    private function parseNestedAggregation(Aggregation $aggregation, EntityDefinition $definition, Context $context): AbstractAggregation
+    {
+        $fieldName = $this->buildAccessor($definition, $aggregation->getField(), $context);
+
+        return $this->createAggregation($aggregation, $fieldName, $definition, $context);
     }
 
     private function createAggregation(Aggregation $aggregation, string $fieldName, EntityDefinition $definition, Context $context): AbstractAggregation
@@ -256,7 +296,7 @@ class CriteriaParser
             case $aggregation instanceof DateHistogramAggregation:
                 return $this->parseDateHistogramAggregation($aggregation, $fieldName, $definition, $context);
             default:
-                throw new \RuntimeException(sprintf('Provided aggregation of class %s not supported', get_class($aggregation)));
+                throw new \RuntimeException(sprintf('Provided aggregation of class %s not supported', \get_class($aggregation)));
         }
     }
 
@@ -313,12 +353,42 @@ class CriteriaParser
     private function parseNotFilter(NotFilter $filter, EntityDefinition $definition, string $root, Context $context): BuilderInterface
     {
         $bool = new BoolQuery();
-        foreach ($filter->getQueries() as $nested) {
+        if (\count($filter->getQueries()) === 0) {
+            return $bool;
+        }
+
+        if (\count($filter->getQueries()) === 1) {
             $bool->add(
-                $this->parseFilter($nested, $definition, $root, $context),
+                $this->parseFilter($filter->getQueries()[0], $definition, $root, $context),
                 BoolQuery::MUST_NOT
             );
+
+            return $bool;
         }
+
+        switch ($filter->getOperator()) {
+            case MultiFilter::CONNECTION_OR:
+                $multiFilter = new OrFilter();
+
+                break;
+            case MultiFilter::CONNECTION_XOR:
+                $multiFilter = new XOrFilter();
+
+                break;
+            default: // AND FILTER
+                $multiFilter = new AndFilter();
+
+                break;
+        }
+
+        foreach ($filter->getQueries() as $query) {
+            $multiFilter->addQuery($query);
+        }
+
+        $bool->add(
+            $this->parseFilter($multiFilter, $definition, $root, $context),
+            BoolQuery::MUST_NOT
+        );
 
         return $bool;
     }

@@ -1,10 +1,10 @@
 {
     "name": "shopware/recovery",
+    "version": "6.3.5.0",
     "description": "Recovery for Shopware",
     "type": "library",
     "license": "MIT",
     "minimum-stability": "stable",
-    "version": "6.3.3.0",
     "require": {
         "php": "^7.2"
     },

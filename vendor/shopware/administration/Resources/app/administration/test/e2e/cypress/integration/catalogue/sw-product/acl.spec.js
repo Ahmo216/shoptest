@@ -30,9 +30,7 @@ describe('Product: Test ACL privileges', () => {
         cy.get('.sw-admin-menu__navigation-list-item.sw-product').click();
 
         // open product
-        cy.get(`${page.elements.dataGridRow}--0`)
-            .get('.sw-data-grid__cell--name')
-            .get('.sw-data-grid__cell-value')
+        cy.get(`${page.elements.dataGridRow}--0 .sw-data-grid__cell--name div > a`)
             .contains('Product name')
             .click();
 
@@ -93,9 +91,7 @@ describe('Product: Test ACL privileges', () => {
         cy.get('.sw-admin-menu__navigation-list-item.sw-product').click();
 
         // open product
-        cy.get(`${page.elements.dataGridRow}--0`)
-            .get('.sw-data-grid__cell--name')
-            .get('.sw-data-grid__cell-value')
+        cy.get(`${page.elements.dataGridRow}--0 .sw-data-grid__cell--name div > a`)
             .contains('Product name')
             .click();
 
@@ -155,11 +151,11 @@ describe('Product: Test ACL privileges', () => {
         cy.get('.sw-select-product__select_manufacturer')
             .typeSingleSelectAndCheck('shopware AG', '.sw-select-product__select_manufacturer');
         cy.get('#sw-field--product-taxId').select('Standard rate');
-        cy.get('#sw-price-field-gross').type('10');
+        cy.get('.sw-list-price-field .sw-price-field-gross').eq(0).type('10');
 
         // Check net price calculation
         cy.wait('@calculatePrice').then(() => {
-            cy.get('#sw-price-field-net').should('have.value', '8.4');
+            cy.get('.sw-list-price-field .sw-price-field-net input').eq(0).should('have.value', '8.4');
         });
 
         cy.get('input[name=sw-field--product-stock]').type('100');

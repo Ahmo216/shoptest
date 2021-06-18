@@ -18,6 +18,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Field\Flag\Deprecated;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\Flag\Extension;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\Flag\ReadProtected;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\Flag\Required;
+use Shopware\Core\Framework\DataAbstractionLayer\Field\Flag\Since;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\Flag\WriteProtected;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\FloatField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\IdField;
@@ -99,7 +100,7 @@ class OpenApiDefinitionSchemaBuilder
                 continue;
             }
 
-            $attr = $this->getPropertyByField(\get_class($field), $field->getPropertyName());
+            $attr = $this->getPropertyByField($field);
 
             if (\in_array($field->getPropertyName(), ['createdAt', 'updatedAt'], true) || $this->isWriteProtected($field)) {
                 $attr->readOnly = true;
@@ -155,6 +156,7 @@ class OpenApiDefinitionSchemaBuilder
                         'properties' => $attributes,
                     ]),
                 ],
+                'description' => 'Added since version: ' . $definition->since(),
             ]);
 
             if (\count($relationships)) {
@@ -183,6 +185,7 @@ class OpenApiDefinitionSchemaBuilder
             'schema' => $schemaName . '_flat',
             'properties' => $attributes,
             'required' => array_unique($requiredAttributes),
+            'description' => 'Added since version: ' . $definition->since(),
         ]);
 
         return $schema;
@@ -365,7 +368,7 @@ class OpenApiDefinitionSchemaBuilder
                 $required[] = $field->getPropertyName();
             }
 
-            $definition->properties[] = $this->getPropertyByField(\get_class($field), $field->getPropertyName());
+            $definition->properties[] = $this->getPropertyByField($field);
         }
 
         if (\count($required)) {
@@ -382,25 +385,33 @@ class OpenApiDefinitionSchemaBuilder
         return $definition;
     }
 
-    private function getPropertyByField(string $fieldClass, string $propertyName): Property
+    private function getPropertyByField(Field $field): Property
     {
+        $fieldClass = \get_class($field);
+
         $property = new Property([
             'type' => $this->getType($fieldClass),
-            'property' => $propertyName,
+            'property' => $field->getPropertyName(),
         ]);
 
-        if (\is_a($fieldClass, DateTimeField::class, true)) {
+        if (is_a($fieldClass, DateTimeField::class, true)) {
             $property->format = 'date-time';
         }
-        if (\is_a($fieldClass, FloatField::class, true)) {
+        if (is_a($fieldClass, FloatField::class, true)) {
             $property->format = 'float';
         }
-        if (\is_a($fieldClass, IntField::class, true)) {
+        if (is_a($fieldClass, IntField::class, true)) {
             $property->format = 'int64';
         }
-        if (\is_a($fieldClass, IdField::class, true) || \is_a($fieldClass, FkField::class, true)) {
+        if (is_a($fieldClass, IdField::class, true) || is_a($fieldClass, FkField::class, true)) {
             $property->type = 'string';
             $property->format = 'uuid';
+        }
+
+        /* @var Since|null $flag */
+        $flag = $field->getFlag(Since::class);
+        if ($flag instanceof Since) {
+            $property->description = 'Added since version: ' . $flag->getSince();
         }
 
         return $property;
@@ -417,16 +428,16 @@ class OpenApiDefinitionSchemaBuilder
 
         $property->type = $this->getType($fieldClass);
 
-        if (\is_a($fieldClass, DateTimeField::class, true)) {
+        if (is_a($fieldClass, DateTimeField::class, true)) {
             $property->format = 'date-time';
         }
-        if (\is_a($fieldClass, FloatField::class, true)) {
+        if (is_a($fieldClass, FloatField::class, true)) {
             $property->format = 'float';
         }
-        if (\is_a($fieldClass, IntField::class, true)) {
+        if (is_a($fieldClass, IntField::class, true)) {
             $property->format = 'int64';
         }
-        if (\is_a($fieldClass, IdField::class, true) || \is_a($fieldClass, FkField::class, true)) {
+        if (is_a($fieldClass, IdField::class, true) || is_a($fieldClass, FkField::class, true)) {
             $property->type = 'string';
             $property->format = 'uuid';
         }
@@ -436,19 +447,19 @@ class OpenApiDefinitionSchemaBuilder
 
     private function getType(string $fieldClass): string
     {
-        if (\is_a($fieldClass, FloatField::class, true)) {
+        if (is_a($fieldClass, FloatField::class, true)) {
             return 'number';
         }
-        if (\is_a($fieldClass, IntField::class, true)) {
+        if (is_a($fieldClass, IntField::class, true)) {
             return 'integer';
         }
-        if (\is_a($fieldClass, BoolField::class, true)) {
+        if (is_a($fieldClass, BoolField::class, true)) {
             return 'boolean';
         }
-        if (\is_a($fieldClass, ListField::class, true)) {
+        if (is_a($fieldClass, ListField::class, true)) {
             return 'array';
         }
-        if (\is_a($fieldClass, JsonField::class, true)) {
+        if (is_a($fieldClass, JsonField::class, true)) {
             return 'object';
         }
 

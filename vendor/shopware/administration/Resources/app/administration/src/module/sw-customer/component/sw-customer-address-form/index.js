@@ -1,4 +1,5 @@
 import template from './sw-customer-address-form.html.twig';
+import './sw-customer-address-form.scss';
 
 const { Component } = Shopware;
 const { Criteria } = Shopware.Data;
@@ -114,6 +115,14 @@ Component.register('sw-customer-address-form', {
                     this.country = country;
                 });
             }
+        },
+
+        'address.company'(newVal) {
+            if (!newVal) {
+                return;
+            }
+
+            this.customer.company = newVal;
         }
     }
 });

@@ -1,12 +1,15 @@
 import template from './sw-cms-section.html.twig';
 import './sw-cms-section.scss';
 
-const { Component, Mixin } = Shopware;
+const { Component, Mixin, Filter } = Shopware;
 
 Component.register('sw-cms-section', {
     template,
 
-    inject: ['repositoryFactory'],
+    inject: [
+        'cmsService',
+        'repositoryFactory'
+    ],
 
     mixins: [
         Mixin.getByName('cms-state')
@@ -61,14 +64,13 @@ Component.register('sw-cms-section', {
         },
 
         sectionStyles() {
-            const apiContext = Shopware.Context.api;
             let backgroundMedia = null;
 
             if (this.section.backgroundMedia) {
                 if (this.section.backgroundMedia.id) {
                     backgroundMedia = `url("${this.section.backgroundMedia.url}")`;
                 } else {
-                    backgroundMedia = `url('${apiContext.assetsPath}${this.section.backgroundMedia.url}')`;
+                    backgroundMedia = `url('${this.assetFilter(this.section.backgroundMedia.url)}')`;
                 }
             }
 
@@ -108,13 +110,21 @@ Component.register('sw-cms-section', {
         },
 
         sideBarBlocks() {
-            const sideBarBlocks = this.section.blocks.filter((block => block.sectionPosition === 'sidebar'));
+            const sideBarBlocks = this.section.blocks.filter((block => this.blockTypeExists(block.type) && block.sectionPosition === 'sidebar'));
             return sideBarBlocks.sort((a, b) => a.position - b.position);
         },
 
         mainContentBlocks() {
-            const mainContentBlocks = this.section.blocks.filter((block => block.sectionPosition !== 'sidebar'));
+            const mainContentBlocks = this.section.blocks.filter((block => this.blockTypeExists(block.type) && block.sectionPosition !== 'sidebar'));
             return mainContentBlocks.sort((a, b) => a.position - b.position);
+        },
+
+        assetFilter() {
+            return Filter.getByName('asset');
+        },
+
+        blockTypes() {
+            return Object.keys(this.cmsService.getCmsBlockRegistry());
         }
     },
 
@@ -168,6 +178,10 @@ Component.register('sw-cms-section', {
 
         getDropData(index, sectionPosition = 'main') {
             return { dropIndex: index, section: this.section, sectionPosition };
+        },
+
+        blockTypeExists(type) {
+            return this.blockTypes.includes(type);
         }
     }
 });

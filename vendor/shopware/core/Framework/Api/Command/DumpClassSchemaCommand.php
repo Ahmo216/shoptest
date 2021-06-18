@@ -44,14 +44,14 @@ class DumpClassSchemaCommand extends Command
         $entityClass = $this->getCollectionEntity($input->getArgument('class'));
 
         if ($entityClass === null) {
-            file_put_contents($this->getFilePath($input->getArgument('name')), json_encode($this->dumpProperties($input->getArgument('class')), JSON_PRETTY_PRINT));
+            file_put_contents($this->getFilePath($input->getArgument('name')), json_encode($this->dumpProperties($input->getArgument('class')), \JSON_PRETTY_PRINT));
         } else {
             $collection = [
                 'type' => 'array',
                 'items' => $this->dumpProperties($entityClass),
             ];
 
-            file_put_contents($this->getFilePath($input->getArgument('name')), json_encode($collection, JSON_PRETTY_PRINT));
+            file_put_contents($this->getFilePath($input->getArgument('name')), json_encode($collection, \JSON_PRETTY_PRINT));
         }
 
         return 0;
@@ -60,6 +60,9 @@ class DumpClassSchemaCommand extends Command
     private function getCollectionEntity(string $className): ?string
     {
         $extends = class_parents($className);
+        if ($extends === false) {
+            return null;
+        }
 
         if (!isset($extends[Collection::class])) {
             return null;
@@ -126,7 +129,7 @@ class DumpClassSchemaCommand extends Command
             foreach ($methods as $method) {
                 $methodName = (string) $method->name;
 
-                if (!in_array($methodName, ['get' . ucfirst($name), 'is' . ucfirst($name)], true)) {
+                if (!\in_array($methodName, ['get' . ucfirst($name), 'is' . ucfirst($name)], true)) {
                     continue;
                 }
 

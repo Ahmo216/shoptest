@@ -441,7 +441,7 @@ class VersionManager
                 $payloadCursor = &$extensions;
             }
 
-            if (!array_key_exists($field->getPropertyName(), $dataCursor)) {
+            if (!\array_key_exists($field->getPropertyName(), $dataCursor)) {
                 continue;
             }
 
@@ -574,7 +574,7 @@ class VersionManager
         $commands = [$insert];
 
         foreach ($writtenEvents as $items) {
-            if (count($items) === 0) {
+            if (\count($items) === 0) {
                 continue;
             }
 
@@ -663,7 +663,7 @@ class VersionManager
             if ($field instanceof TranslationsAssociationField && $pkField->getStorageName() === $field->getLanguageField()) {
                 continue;
             }
-            if (array_key_exists($pkField->getPropertyName(), $nestedItem)) {
+            if (\array_key_exists($pkField->getPropertyName(), $nestedItem)) {
                 unset($nestedItem[$pkField->getPropertyName()]);
             }
         }
@@ -770,10 +770,15 @@ class VersionManager
             return $this->resolveMappingParents($definition, $rawData);
         }
 
+        $parentIds = [];
+        if ($definition->isInheritanceAware()) {
+            $parentIds = $this->fetchParentIds($definition, $rawData);
+        }
+
         $parent = $definition->getParentDefinition();
 
         if (!$parent) {
-            return [];
+            return $parentIds;
         }
 
         $fkField = $definition->getFields()->filter(function (Field $field) use ($parent) {
@@ -799,7 +804,7 @@ class VersionManager
 
         $entity = $parent->getEntityName();
 
-        $nested[$entity] = array_merge($nested[$entity] ?? [], $primaryKeys);
+        $nested[$entity] = array_merge($nested[$entity] ?? [], $primaryKeys, $parentIds[$entity] ?? []);
 
         return $nested;
     }
@@ -887,7 +892,7 @@ class VersionManager
 
         $primaryKeys = [];
         foreach ($rawData as $row) {
-            if (array_key_exists($fkField->getPropertyName(), $row)) {
+            if (\array_key_exists($fkField->getPropertyName(), $row)) {
                 $fk = $row[$fkField->getPropertyName()];
             } else {
                 $fk = $this->fetchForeignKey($definition, $row, $fkField);
@@ -969,10 +974,10 @@ class VersionManager
 
     private function getEntityForeignKeyName(string $parentEntity): string
     {
-        $parentPropertyName = \explode('_', $parentEntity);
-        $parentPropertyName = \array_map('ucfirst', $parentPropertyName);
+        $parentPropertyName = explode('_', $parentEntity);
+        $parentPropertyName = array_map('ucfirst', $parentPropertyName);
 
-        return \lcfirst(\implode($parentPropertyName)) . 'Id';
+        return lcfirst(implode('', $parentPropertyName)) . 'Id';
     }
 
     private function resolveRelations(EntityDefinition $definition, array $rawData, array $writeResults): array
@@ -1010,5 +1015,27 @@ class VersionManager
         }
 
         return $parents;
+    }
+
+    private function fetchParentIds(EntityDefinition $definition, array $rawData): array
+    {
+        $fetchQuery = sprintf(
+            'SELECT DISTINCT LOWER(HEX(parent_id)) as id FROM %s WHERE id IN (:ids)',
+            EntityDefinitionQueryHelper::escape($definition->getEntityName())
+        );
+
+        $parentIds = $this->connection->fetchAll(
+            $fetchQuery,
+            ['ids' => Uuid::fromHexToBytesList(array_column($rawData, 'id'))],
+            ['ids' => Connection::PARAM_STR_ARRAY]
+        );
+
+        $ids = array_unique(array_filter(array_column($parentIds, 'id')));
+
+        if (\count($ids) === 0) {
+            return [];
+        }
+
+        return [$definition->getEntityName() => $ids];
     }
 }

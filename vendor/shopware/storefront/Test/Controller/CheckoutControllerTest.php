@@ -24,7 +24,6 @@ use Shopware\Core\Framework\Api\Util\AccessKeyHelper;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
-use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Test\Seo\StorefrontSalesChannelTestHelper;
 use Shopware\Core\Framework\Test\TestCaseBase\IntegrationTestBehaviour;
 use Shopware\Core\Framework\Uuid\Uuid;
@@ -124,7 +123,7 @@ class CheckoutControllerTest extends TestCase
         static::assertStringContainsString('/account/order/edit', $response->getTargetUrl(), 'Target Url does not point to /checkout/finish');
     }
 
-    public function testAffiliateOrder(): void
+    public function testAffiliateAndCampaignTracking(): void
     {
         $request = $this->createRequest();
         $request->getSession()->set(AffiliateTrackingListener::AFFILIATE_CODE_KEY, self::TEST_AFFILIATE_CODE);
@@ -134,6 +133,28 @@ class CheckoutControllerTest extends TestCase
 
         static::assertSame(self::TEST_AFFILIATE_CODE, $order->getAffiliateCode());
         static::assertSame(self::TEST_CAMPAIGN_CODE, $order->getCampaignCode());
+    }
+
+    public function testAffiliateTracking(): void
+    {
+        $request = $this->createRequest();
+        $request->getSession()->set(AffiliateTrackingListener::CAMPAIGN_CODE_KEY, self::TEST_CAMPAIGN_CODE);
+
+        $order = $this->performOrder('', false, $request);
+
+        static::assertSame(self::TEST_CAMPAIGN_CODE, $order->getCampaignCode());
+        static::assertNull($order->getAffiliateCode());
+    }
+
+    public function testCampaignOrderTracking(): void
+    {
+        $request = $this->createRequest();
+        $request->getSession()->set(AffiliateTrackingListener::AFFILIATE_CODE_KEY, self::TEST_AFFILIATE_CODE);
+
+        $order = $this->performOrder('', false, $request);
+
+        static::assertSame(self::TEST_AFFILIATE_CODE, $order->getAffiliateCode());
+        static::assertNull($order->getCampaignCode());
     }
 
     public function testOrderWithEmptyCartDoesNotResultIn400StatusCode(): void
@@ -158,7 +179,6 @@ class CheckoutControllerTest extends TestCase
     public function testOffCanvasWithErrorsFlash($errorTypes, $errorKeys): void
     {
         static::markTestSkipped('snippet not working');
-        Feature::skipTestIfInActive('FEATURE_NEXT_10058', $this);
         $contextToken = Uuid::randomHex();
         $productId = Uuid::randomHex();
         /** @var CartService $cartService */
@@ -290,7 +310,7 @@ class CheckoutControllerTest extends TestCase
 
         static::assertInstanceOf(RedirectResponse::class, $response);
 
-        $orderId = substr($response->getTargetUrl(), -self::UUID_LENGTH);
+        $orderId = mb_substr($response->getTargetUrl(), -self::UUID_LENGTH);
 
         /** @var EntityRepositoryInterface $orderRepo */
         $orderRepo = $this->getContainer()->get('order.repository');

@@ -98,6 +98,7 @@
                             name="sw-field--product-restock-time"
                             :mapInheritance="props"
                             numberType="int"
+                            allowEmpty
                             :min="0"
                             :disabled="props.isInherited || !allowEdit"
                             :label="$tc('sw-product.settingsForm.labelRestockTime')"
@@ -193,6 +194,7 @@
                             type="number"
                             :mapInheritance="props"
                             numberType="int"
+                            :allowEmpty="true"
                             :min="0"
                             :error="productMaxPurchaseError"
                             :label="$tc('sw-product.settingsForm.labelMaxPurchase')"

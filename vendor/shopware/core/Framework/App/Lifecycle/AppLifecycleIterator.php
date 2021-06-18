@@ -3,13 +3,14 @@
 namespace Shopware\Core\Framework\App\Lifecycle;
 
 use Shopware\Core\Framework\App\AppCollection;
-use Shopware\Core\Framework\App\Exception\AppRegistrationException;
-use Shopware\Core\Framework\App\Exception\CustomFieldTypeNotFoundException;
 use Shopware\Core\Framework\App\Manifest\Manifest;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class AppLifecycleIterator
 {
     /**
@@ -32,8 +33,20 @@ class AppLifecycleIterator
 
     /**
      * @return Manifest[]
+     *
+     * @deprecated tag:v6.4.0 use iterateOverApps() instead
      */
     public function iterate(AbstractAppLifecycle $appLifecycle, bool $activate, Context $context): array
+    {
+        return array_map(function (array $fail): Manifest {
+            return $fail['manifest'];
+        }, $this->iterateOverApps($appLifecycle, $activate, $context));
+    }
+
+    /**
+     * @psalm-return  list<array{manifest: Manifest, exception: \Exception}>
+     */
+    public function iterateOverApps(AbstractAppLifecycle $appLifecycle, bool $activate, Context $context): array
     {
         $appsFromFileSystem = $this->appLoader->load();
         $installedApps = $this->getRegisteredApps($context);
@@ -42,7 +55,7 @@ class AppLifecycleIterator
         $fails = [];
         foreach ($appsFromFileSystem as $manifest) {
             try {
-                if (!array_key_exists($manifest->getMetadata()->getName(), $installedApps)) {
+                if (!\array_key_exists($manifest->getMetadata()->getName(), $installedApps)) {
                     $appLifecycle->install($manifest, $activate, $context);
                     $successfulUpdates[] = $manifest->getMetadata()->getName();
 
@@ -54,8 +67,11 @@ class AppLifecycleIterator
                     $appLifecycle->update($manifest, $app, $context);
                 }
                 $successfulUpdates[] = $manifest->getMetadata()->getName();
-            } catch (AppRegistrationException | CustomFieldTypeNotFoundException $exception) {
-                $fails[] = $manifest;
+            } catch (\Exception $exception) {
+                $fails[] = [
+                    'manifest' => $manifest,
+                    'exception' => $exception,
+                ];
 
                 continue;
             }

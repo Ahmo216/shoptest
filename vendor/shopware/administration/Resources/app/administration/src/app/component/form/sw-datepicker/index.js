@@ -21,6 +21,7 @@ const { Component, Mixin } = Shopware;
  *      dateType="date"
  *      label="SW-Field Date"
  *      size="default"
+ *      placeholder="Enter date..."
  *      value="12.10.2019">
  * </sw-datepicker>
  */
@@ -71,6 +72,12 @@ Component.register('sw-datepicker', {
             }
         },
 
+        placeholderText: {
+            type: String,
+            default: '',
+            required: false
+        },
+
         required: {
             type: Boolean,
             default: false,
@@ -92,7 +99,7 @@ Component.register('sw-datepicker', {
         },
 
         locale() {
-            return Shopware.State.getters.adminLocaleLanguage;
+            return Shopware.State.getters.adminLocaleLanguage || 'en';
         },
 
         currentFlatpickrConfig() {
@@ -104,6 +111,10 @@ Component.register('sw-datepicker', {
         },
 
         placeholder() {
+            if (this.placeholderText.length > 0) {
+                return this.placeholderText;
+            }
+
             if (this.flatpickrInstance === null) {
                 return this.defaultConfig.altFormat;
             }
@@ -404,7 +415,7 @@ Component.register('sw-datepicker', {
 
             this.defaultConfig = {
                 time_24hr: true,
-                locale: 'en',
+                locale: this.locale,
                 dateFormat,
                 altInput: true,
                 altFormat,

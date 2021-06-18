@@ -3,7 +3,7 @@
 namespace Shopware\Core\Content\Product\SalesChannel\Review;
 
 use OpenApi\Annotations as OA;
-use Shopware\Core\Checkout\Cart\Exception\CustomerNotLoggedInException;
+use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Content\Product\Exception\ReviewNotActiveExeption;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
@@ -12,7 +12,9 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Validation\EntityExists;
 use Shopware\Core\Framework\DataAbstractionLayer\Validation\EntityNotExists;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
+use Shopware\Core\Framework\Routing\Annotation\LoginRequired;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Validation\DataBag\DataBag;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\Framework\Validation\DataValidationDefinition;
@@ -63,26 +65,27 @@ class ProductReviewSaveRoute extends AbstractProductReviewSaveRoute
     }
 
     /**
+     * @Since("6.3.2.0")
      * @OA\Post(
      *      path="/product/{productId}/review",
-     *      description="",
+     *      summary="",
      *      operationId="saveProductReview",
      *      tags={"Store API","Product"},
+     *      @OA\Parameter(name="productId", description="Product ID", @OA\Schema(type="string"), in="path", required=true),
      *      @OA\Response(
      *          response="200",
      *          description="Success",
      *     )
      * )
+     * @LoginRequired()
      * @Route("/store-api/v{version}/product/{productId}/review", name="store-api.product-review.save", methods={"POST"})
      */
     public function save(string $productId, RequestDataBag $data, SalesChannelContext $context): NoContentResponse
     {
         $this->checkReviewsActive($context);
 
+        /** @var CustomerEntity $customer */
         $customer = $context->getCustomer();
-        if (!$customer) {
-            throw new CustomerNotLoggedInException();
-        }
 
         $languageId = $context->getContext()->getLanguageId();
         $salesChannelId = $context->getSalesChannel()->getId();

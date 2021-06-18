@@ -4,15 +4,16 @@ namespace Shopware\Core\Checkout\Customer\SalesChannel;
 
 use Composer\Semver\Constraint\ConstraintInterface;
 use OpenApi\Annotations as OA;
-use Shopware\Core\Checkout\Cart\Exception\CustomerNotLoggedInException;
+use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Checkout\Customer\Validation\Constraint\CustomerEmailUnique;
 use Shopware\Core\Checkout\Customer\Validation\Constraint\CustomerPasswordMatches;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
-use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\ContextTokenRequired;
+use Shopware\Core\Framework\Routing\Annotation\LoginRequired;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Validation\BuildValidationEvent;
 use Shopware\Core\Framework\Validation\DataBag\DataBag;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
@@ -65,46 +66,40 @@ class ChangeEmailRoute extends AbstractChangeEmailRoute
     }
 
     /**
+     * @Since("6.2.0.0")
      * @OA\Post(
      *      path="/account/change-email",
-     *      description="Change email",
+     *      summary="Change email",
      *      operationId="changeEmail",
      *      tags={"Store API", "Account"},
-     *      @OA\Parameter(
-     *        name="email",
-     *        in="body",
-     *        description="New Email",
-     *        @OA\Schema(type="string"),
-     *      ),
-     *      @OA\Parameter(
-     *        name="emailConfirmation",
-     *        in="body",
-     *        description="New Email",
-     *        @OA\Schema(type="string"),
-     *      ),
-     *      @OA\Parameter(
-     *        name="password",
-     *        in="body",
-     *        description="Current password",
-     *        @OA\Schema(type="string"),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              @OA\Property(property="email", description="New Email", type="string"),
+     *              @OA\Property(property="emailConfirmation", description="New Email", type="string"),
+     *              @OA\Property(property="password", description="Current password", type="string")
+     *          )
      *      ),
      *      @OA\Response(
      *          response="200",
-     *          @OA\JsonContent(ref="#/definitions/SuccessResponse")
+     *          description="Successfully saved",
+     *          @OA\JsonContent(ref="#/components/schemas/SuccessResponse")
      *     )
      * )
+     * @LoginRequired()
      * @Route(path="/store-api/v{version}/account/change-email", name="store-api.account.change-email", methods={"POST"})
      */
-    public function change(RequestDataBag $requestDataBag, SalesChannelContext $context): SuccessResponse
+    public function change(RequestDataBag $requestDataBag, SalesChannelContext $context, ?CustomerEntity $customer = null): SuccessResponse
     {
-        if (!$context->getCustomer()) {
-            throw new CustomerNotLoggedInException();
+        /* @deprecated tag:v6.4.0 - Parameter $customer will be mandatory when using with @LoginRequired() */
+        if (!$customer) {
+            $customer = $context->getCustomer();
         }
 
         $this->validateEmail($requestDataBag, $context);
 
         $customerData = [
-            'id' => $context->getCustomer()->getId(),
+            'id' => $customer->getId(),
             'email' => $requestDataBag->get('email'),
         ];
 
@@ -117,9 +112,7 @@ class ChangeEmailRoute extends AbstractChangeEmailRoute
     {
         $validation = new DataValidationDefinition('customer.email.update');
 
-        $options = Feature::isActive('FEATURE_NEXT_10555')
-            ? ['context' => $context->getContext(), 'salesChannelContext' => $context]
-            : ['context' => $context->getContext()];
+        $options = ['context' => $context->getContext(), 'salesChannelContext' => $context];
 
         $validation
             ->add(
@@ -147,7 +140,7 @@ class ChangeEmailRoute extends AbstractChangeEmailRoute
     {
         $validations = $validation->getProperties();
 
-        if (!array_key_exists($field, $validations)) {
+        if (!\array_key_exists($field, $validations)) {
             return;
         }
 

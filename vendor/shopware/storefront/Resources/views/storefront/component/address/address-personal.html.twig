@@ -12,15 +12,18 @@
                     {% endblock %}
 
                     {% block component_address_personal_account_type_select %}
-                        <select name="{% if prefix %}{{ prefix }}[accountType]{% else %}accountType{% endif %}"
-                                id="{{ prefix }}accountType"
-                                required="required"
-                                class="custom-select contact-select"
-                                data-form-field-toggle="true"
-                                data-form-field-toggle-target=".js-field-toggle-contact-type-company"
-                                data-form-field-toggle-value="{{ constant('Shopware\\Core\\Checkout\\Customer\\CustomerEntity::ACCOUNT_TYPE_BUSINESS') }}"
-                                data-form-field-toggle-scope="{% if scope == 'parent' %}parent{% else %}all{% endif %}"
-                                {% if scope == 'parent' %}data-form-field-toggle-parent-selector={{ parentSelector }}{% endif %}>
+                            {% if shopware.config.core.loginRegistration.showAccountTypeSelection %}
+                                <select name="{% if prefix %}{{ prefix }}[accountType]{% else %}accountType{% endif %}"
+                                    id="{{ prefix }}accountType"
+                                    required="required"
+                                    class="custom-select contact-select"
+                                    data-form-field-toggle="true"
+                                    data-form-field-toggle-target=".js-field-toggle-contact-type-company"
+                                    data-form-field-toggle-value="{{ constant('Shopware\\Core\\Checkout\\Customer\\CustomerEntity::ACCOUNT_TYPE_BUSINESS') }}"
+                                    data-form-field-toggle-scope="{% if scope == 'parent' %}parent{% else %}all{% endif %}"
+                                    {% if scope == 'parent' %}data-form-field-toggle-parent-selector={{ parentSelector }}{% endif %}
+                                >
+                            {% endif %}
 
                             {% set isCompany = false %}
 
@@ -28,8 +31,12 @@
                                 {% set isCompany  = true %}
                             {% endif %}
 
+                            {% if accountType and accountType == constant('Shopware\\Core\\Checkout\\Customer\\CustomerEntity::ACCOUNT_TYPE_BUSINESS') %}
+                                {% set isCompany  = true %}
+                            {% endif %}
+
                             {% set isLoginPage = false %}
-                            {% if activeRoute in ['frontend.account.login.page', 'frontend.checkout.register.page'] %}
+                            {% if activeRoute == 'frontend.account.login.page' %}
                                 {% set isLoginPage = true %}
                             {% endif %}
 
@@ -57,7 +64,7 @@
                     {% endblock %}
                 </div>
             </div>
-        {% else %}
+        {% elseif not hideCustomerTypeSelect %}
             <input type="hidden" name="accountType">
         {% endif %}
     {% endblock %}
@@ -232,6 +239,25 @@
                     </div>
                 {% endblock %}
             </div>
+        {% endif %}
+    {% endblock %}
+
+    {% block component_address_personal_vat_id %}
+        {% if showVatIdField %}
+            {% if shopware.config.core.loginRegistration.showAccountTypeSelection %}
+                <div class="js-field-toggle-contact-type-company js-field-toggle-contact-type-vat-id">
+                    {% block component_address_personal_vat_id_fields %}
+                        <div class="form-row">
+                            <div class="form-group col-12">
+                                {% sw_include '@Storefront/storefront/component/address/address-personal-vat-id.html.twig' with {
+                                    'vatIds': data.get('vatIds'),
+                                    'editMode': true
+                                } %}
+                            </div>
+                        </div>
+                    {% endblock %}
+                </div>
+            {% endif %}
         {% endif %}
     {% endblock %}
 

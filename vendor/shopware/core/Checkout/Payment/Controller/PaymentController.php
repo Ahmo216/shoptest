@@ -10,6 +10,7 @@ use Shopware\Core\Checkout\Payment\Exception\TokenExpiredException;
 use Shopware\Core\Checkout\Payment\Exception\UnknownPaymentMethodException;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -31,6 +32,7 @@ class PaymentController extends AbstractController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @RouteScope(scopes={"storefront"})
      * @Route("/payment/finalize-transaction", defaults={"auth_required"=false}, name="payment.finalize.transaction", methods={"GET", "POST"})
      *
@@ -55,11 +57,11 @@ class PaymentController extends AbstractController
         if ($exception !== null) {
             $url = $result->getErrorUrl();
 
-            if ($exception instanceof PaymentProcessException) {
-                $url .= (parse_url((string) $url, PHP_URL_QUERY) ? '&' : '?') . 'error-code=' . $exception->getErrorCode();
-            }
+            if ($url !== null && $exception instanceof PaymentProcessException) {
+                $url .= (parse_url($url, PHP_URL_QUERY) ? '&' : '?') . 'error-code=' . $exception->getErrorCode();
 
-            return new RedirectResponse($url);
+                return new RedirectResponse($url);
+            }
         }
 
         if ($result->getFinishUrl()) {

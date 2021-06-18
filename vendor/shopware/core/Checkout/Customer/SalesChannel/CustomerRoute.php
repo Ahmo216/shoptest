@@ -3,14 +3,16 @@
 namespace Shopware\Core\Checkout\Customer\SalesChannel;
 
 use OpenApi\Annotations as OA;
-use Shopware\Core\Checkout\Cart\Exception\CustomerNotLoggedInException;
 use Shopware\Core\Checkout\Customer\CustomerDefinition;
+use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\RequestCriteriaBuilder;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\Entity;
+use Shopware\Core\Framework\Routing\Annotation\LoginRequired;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -51,10 +53,11 @@ class CustomerRoute extends AbstractCustomerRoute
     }
 
     /**
+     * @Since("6.2.0.0")
      * @Entity("customer")
-     * @OA\Get(
+     * @OA\Post(
      *      path="/account/customer",
-     *      description="Returns informations about the loggedin customer",
+     *      summary="Returns informations about the loggedin customer",
      *      operationId="readCustomer",
      *      tags={"Store API", "Account"},
      *      @OA\Parameter(name="Api-Basic-Parameters"),
@@ -64,19 +67,22 @@ class CustomerRoute extends AbstractCustomerRoute
      *          @OA\JsonContent(ref="#/components/schemas/customer_flat")
      *     )
      * )
+     * @LoginRequired(allowGuest=true)
      * @Route("/store-api/v{version}/account/customer", name="store-api.account.customer", methods={"GET", "POST"})
      */
-    public function load(Request $request, SalesChannelContext $context, ?Criteria $criteria = null): CustomerResponse
+    public function load(Request $request, SalesChannelContext $context, ?Criteria $criteria = null, ?CustomerEntity $customer = null): CustomerResponse
     {
-        if (!$context->getCustomer()) {
-            throw new CustomerNotLoggedInException();
-        }
-
         // @deprecated tag:v6.4.0 - Criteria will be required
         if (!$criteria) {
             $criteria = $this->requestCriteriaBuilder->handleRequest($request, new Criteria(), $this->customerDefinition, $context->getContext());
         }
-        $criteria->setIds([$context->getCustomer()->getId()]);
+
+        /* @deprecated tag:v6.4.0 - Parameter $customer will be mandatory when using with @LoginRequired() */
+        if (!$customer) {
+            $customer = $context->getCustomer();
+        }
+
+        $criteria->setIds([$customer->getId()]);
 
         $customer = $this->customerRepository->search($criteria, $context->getContext())->first();
 

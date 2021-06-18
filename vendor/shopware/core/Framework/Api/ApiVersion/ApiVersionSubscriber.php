@@ -29,6 +29,12 @@ class ApiVersionSubscriber implements EventSubscriberInterface
     public function checkIfVersionIsSupported(RequestEvent $event): void
     {
         $path = $event->getRequest()->getPathInfo();
+
+        // This route can be used to determine the Shopware version on any Shopware version
+        if ($path === '/api/v1/_info/version') {
+            return;
+        }
+
         $matches = [];
         // https://regex101.com/r/BHG1ab/1
         if (!preg_match('/^\/(api|sales-channel-api)\/v(?P<version>\d)\/.*$/', $path, $matches)) {
@@ -37,7 +43,7 @@ class ApiVersionSubscriber implements EventSubscriberInterface
 
         $requestedVersion = (int) $matches['version'];
 
-        if (in_array($requestedVersion, $this->supportedApiVersions, true)) {
+        if (\in_array($requestedVersion, $this->supportedApiVersions, true)) {
             return;
         }
 

@@ -32,7 +32,8 @@ class SystemConfigServiceTest extends TestCase
         $this->systemConfigService = new SystemConfigService(
             $this->getContainer()->get(Connection::class),
             $this->getContainer()->get('system_config.repository'),
-            $this->getContainer()->get(ConfigReader::class)
+            $this->getContainer()->get(ConfigReader::class),
+            $this->getContainer()->get('plugin.repository')
         );
     }
 
@@ -270,6 +271,21 @@ class SystemConfigServiceTest extends TestCase
         $actual = $this->systemConfigService->getDomain('foo', Defaults::SALES_CHANNEL, true);
 
         static::assertEquals($expected, $actual);
+    }
+
+    public function testGetDomainInheritWithBooleanValue(): void
+    {
+        $this->systemConfigService->set('foo.bar', true);
+        $actual = $this->systemConfigService->getDomain('foo', Defaults::SALES_CHANNEL, true);
+
+        // assert that the service reads the default value, when no sales-channel-specific value is configured
+        static::assertSame(['foo.bar' => true], $actual);
+
+        $this->systemConfigService->set('foo.bar', false, Defaults::SALES_CHANNEL);
+        $actual = $this->systemConfigService->getDomain('foo', Defaults::SALES_CHANNEL, true);
+
+        // assert that the service reads the sales-channel-specific value when one is configured
+        static::assertSame(['foo.bar' => false], $actual);
     }
 
     public function testGetDomainWithDots(): void

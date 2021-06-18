@@ -7,7 +7,7 @@ const { Criteria } = Shopware.Data;
 Component.register('sw-customer-list', {
     template,
 
-    inject: ['repositoryFactory', 'acl', 'feature'],
+    inject: ['repositoryFactory', 'acl'],
 
     mixins: [
         Mixin.getByName('notification'),
@@ -19,8 +19,8 @@ Component.register('sw-customer-list', {
         return {
             customers: null,
             sortBy: 'customerNumber',
-            sortDirection: 'DESC',
             naturalSorting: true,
+            sortDirection: 'DESC',
             isLoading: false,
             showDeleteModal: false,
             filterLoading: false,
@@ -63,15 +63,15 @@ Component.register('sw-customer-list', {
                 criteria.addFilter(Criteria.not('OR', [Criteria.equals('requestedGroupId', null)]));
             }
 
-            criteria.addSorting(Criteria.sort(this.sortBy, this.sortDirection, this.naturalSorting));
+            this.sortBy.split(',').forEach(sortBy => {
+                criteria.addSorting(Criteria.sort(sortBy, this.sortDirection, this.naturalSorting));
+            });
+
             criteria
                 .addAssociation('defaultBillingAddress')
                 .addAssociation('group')
-                .addAssociation('requestedGroup');
-
-            if (this.feature.isActive('FEATURE_NEXT_10555')) {
-                criteria.addAssociation('salesChannel');
-            }
+                .addAssociation('requestedGroup')
+                .addAssociation('salesChannel');
 
             return criteria;
         },
@@ -118,6 +118,7 @@ Component.register('sw-customer-list', {
                 this.total = items.total;
                 this.customers = items;
                 this.isLoading = false;
+                this.selection = {};
 
                 return items;
             }).catch(() => {
@@ -144,26 +145,30 @@ Component.register('sw-customer-list', {
         getCustomerColumns() {
             const columns = [{
                 property: 'firstName',
-                dataIndex: 'firstName,lastName',
+                dataIndex: 'lastName,firstName',
                 inlineEdit: 'string',
                 label: 'sw-customer.list.columnName',
                 routerLink: 'sw.customer.detail',
                 width: '250px',
                 allowResize: true,
-                primary: true
+                primary: true,
+                useCustomSort: true
             }, {
                 property: 'defaultBillingAddress.street',
                 label: 'sw-customer.list.columnStreet',
-                allowResize: true
+                allowResize: true,
+                useCustomSort: true
             }, {
                 property: 'defaultBillingAddress.zipcode',
                 label: 'sw-customer.list.columnZip',
                 align: 'right',
-                allowResize: true
+                allowResize: true,
+                useCustomSort: true
             }, {
                 property: 'defaultBillingAddress.city',
                 label: 'sw-customer.list.columnCity',
-                allowResize: true
+                allowResize: true,
+                useCustomSort: true
             }, {
                 property: 'customerNumber',
                 dataIndex: 'customerNumber',
@@ -171,7 +176,8 @@ Component.register('sw-customer-list', {
                 label: 'sw-customer.list.columnCustomerNumber',
                 allowResize: true,
                 inlineEdit: 'string',
-                align: 'right'
+                align: 'right',
+                useCustomSort: true
             }, {
                 property: 'group',
                 dataIndex: 'group',
@@ -179,36 +185,35 @@ Component.register('sw-customer-list', {
                 label: 'sw-customer.list.columnGroup',
                 allowResize: true,
                 inlineEdit: 'string',
-                align: 'right'
+                align: 'right',
+                useCustomSort: true
             }, {
                 property: 'email',
                 inlineEdit: 'string',
                 label: 'sw-customer.list.columnEmail',
-                allowResize: true
+                allowResize: true,
+                useCustomSort: true
             }, {
                 property: 'affiliateCode',
                 inlineEdit: 'string',
                 label: 'sw-customer.list.columnAffiliateCode',
                 allowResize: true,
-                visible: false
+                visible: false,
+                useCustomSort: true
             }, {
                 property: 'campaignCode',
                 inlineEdit: 'string',
                 label: 'sw-customer.list.columnCampaignCode',
                 allowResize: true,
-                visible: false
+                visible: false,
+                useCustomSort: true
+            }, {
+                property: 'boundSalesChannelId',
+                label: 'sw-customer.list.columnBoundSalesChannel',
+                allowResize: true,
+                visible: false,
+                useCustomSort: true
             }];
-
-            if (this.feature.isActive('FEATURE_NEXT_10555')) {
-                columns.push({
-                    property: 'boundSalesChannelId',
-                    dataIndex: 'boundSalesChannel',
-                    inlineEdit: 'string',
-                    label: 'sw-customer.list.columnBoundSalesChannel',
-                    allowResize: true,
-                    visible: false
-                });
-            }
 
             return columns;
         },

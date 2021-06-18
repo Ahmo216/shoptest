@@ -14,6 +14,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\ContextTokenRequired;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Validation\BuildValidationEvent;
 use Shopware\Core\Framework\Validation\DataBag\DataBag;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
@@ -82,34 +83,20 @@ class ResetPasswordRoute extends AbstractResetPasswordRoute
     }
 
     /**
+     * @Since("6.2.0.0")
      * @OA\Post(
      *      path="/account/recovery-password-confirm",
-     *      description="Resets password using recovery hash",
+     *      summary="Resets password using recovery hash",
      *      operationId="recoveryPassword",
      *      tags={"Store API", "Account"},
-     *      @OA\Parameter(
-     *        name="hash",
-     *        in="body",
-     *        description="Hash from confirmation mail",
-     *        @OA\Schema(type="string"),
-     *      ),
-     *      @OA\Parameter(
-     *        name="newPassword",
-     *        in="body",
-     *        description="new password",
-     *        @OA\Schema(type="string"),
-     *      ),
-     *      @OA\Parameter(
-     *        name="newPasswordConfirm",
-     *        in="body",
-     *        description="new password",
-     *        @OA\Schema(type="string"),
-     *      ),
-     *      @OA\Parameter(
-     *        name="storefrontUrl",
-     *        in="body",
-     *        description="baseurl for the url in mail",
-     *        @OA\Schema(type="string"),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              @OA\Property(property="hash", description="Hash from confirmation mail", type="string"),
+     *              @OA\Property(property="newPassword", description="New password", type="string"),
+     *              @OA\Property(property="newPasswordConfirm", description="New password confirm", type="string"),
+     *              @OA\Property(property="storefrontUrl", description="BaseUrl for the url in mail", type="string")
+     *          )
      *      ),
      *      @OA\Response(
      *          response="200",
@@ -188,7 +175,7 @@ class ResetPasswordRoute extends AbstractResetPasswordRoute
     {
         $validations = $validation->getProperties();
 
-        if (!array_key_exists($field, $validations)) {
+        if (!\array_key_exists($field, $validations)) {
             return;
         }
 

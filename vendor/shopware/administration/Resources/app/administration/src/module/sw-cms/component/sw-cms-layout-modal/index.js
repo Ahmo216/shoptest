@@ -13,6 +13,22 @@ Component.register('sw-cms-layout-modal', {
         Mixin.getByName('listing')
     ],
 
+    props: {
+        headline: {
+            type: String,
+            required: false,
+            default: ''
+        },
+
+        cmsPageTypes: {
+            type: Array,
+            required: false,
+            default() {
+                return [];
+            }
+        }
+    },
+
     data() {
         return {
             selected: null,
@@ -28,23 +44,34 @@ Component.register('sw-cms-layout-modal', {
     computed: {
         pageRepository() {
             return this.repositoryFactory.create('cms_page');
+        },
+
+        cmsPageCriteria() {
+            const criteria = new Criteria(this.page, this.limit);
+
+            criteria
+                .addAssociation('previewMedia')
+                .addAssociation('sections')
+                .addAssociation('categories')
+                .addSorting(Criteria.sort(this.sortBy, this.sortDirection));
+
+            if (this.cmsPageTypes.length) {
+                criteria.addFilter(Criteria.equalsAny('type', this.cmsPageTypes));
+            }
+
+            if (this.term !== null) {
+                criteria.setTerm(this.term);
+            }
+
+            return criteria;
         }
     },
 
     methods: {
         getList() {
             this.isLoading = true;
-            const criteria = new Criteria(this.page, this.limit);
-            criteria.addAssociation('previewMedia')
-                .addAssociation('sections')
-                .addAssociation('categories')
-                .addSorting(Criteria.sort(this.sortBy, this.sortDirection));
 
-            if (this.term !== null) {
-                criteria.setTerm(this.term);
-            }
-
-            return this.pageRepository.search(criteria, Shopware.Context.api).then((searchResult) => {
+            return this.pageRepository.search(this.cmsPageCriteria, Shopware.Context.api).then((searchResult) => {
                 this.total = searchResult.total;
                 this.pages = searchResult;
                 this.isLoading = false;

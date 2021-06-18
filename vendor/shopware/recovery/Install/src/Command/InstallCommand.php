@@ -11,6 +11,7 @@ use Shopware\Recovery\Common\Service\SystemConfigService;
 use Shopware\Recovery\Install\DatabaseFactory;
 use Shopware\Recovery\Install\DatabaseInteractor;
 use Shopware\Recovery\Install\Service\AdminService;
+use Shopware\Recovery\Install\Service\BlueGreenDeploymentService;
 use Shopware\Recovery\Install\Service\DatabaseService;
 use Shopware\Recovery\Install\Service\EnvConfigWriter;
 use Shopware\Recovery\Install\Service\ShopService;
@@ -94,6 +95,10 @@ class InstallCommand extends Command
 
         $connectionInfo->databaseName = $dbName;
         $databaseService->selectDatabase($connectionInfo->databaseName);
+
+        /** @var BlueGreenDeploymentService $blueGreenDeploymentService */
+        $blueGreenDeploymentService = $container->offsetGet('blue.green.deployment.service');
+        $blueGreenDeploymentService->setEnvironmentVariable();
 
         $skipImport = $databaseService->containsShopwareSchema()
             && $input->getOption('no-skip-import')
@@ -247,7 +252,7 @@ class InstallCommand extends Command
         $adminUser->firstName = $input->getOption('admin-firstname');
         $adminUser->lastName = $input->getOption('admin-lastname');
 
-        if ($adminUser->locale && !in_array($adminUser->locale, Locale::getValidLocales(), true)) {
+        if ($adminUser->locale && !\in_array($adminUser->locale, Locale::getValidLocales(), true)) {
             throw new \RuntimeException('Invalid admin-locale provided');
         }
 
@@ -314,6 +319,7 @@ class InstallCommand extends Command
         );
         $question->setErrorMessage('Currency %s is invalid.');
         $shop->currency = $this->IOHelper->ask($question);
+        $shop->country = $this->IOHelper->ask(sprintf('Shop default country (%s): ', $shop->country), $shop->country);
 
         return $shop;
     }
@@ -328,7 +334,7 @@ class InstallCommand extends Command
         $shop->currency = $input->getOption('shop-currency');
         $shop->country = $input->getOption('shop-country');
 
-        if ($shop->locale && !in_array($shop->locale, Locale::getValidLocales(), true)) {
+        if ($shop->locale && !\in_array($shop->locale, Locale::getValidLocales(), true)) {
             throw new \RuntimeException('Invalid shop-locale provided');
         }
 
@@ -399,7 +405,7 @@ class InstallCommand extends Command
 
         $defaultChoice = null;
         if ($connectionInfo->databaseName) {
-            if (in_array($connectionInfo->databaseName, $databaseNames, true)) {
+            if (\in_array($connectionInfo->databaseName, $databaseNames, true)) {
                 $defaultChoice = array_search($connectionInfo->databaseName, $databaseNames, true);
             }
         }
@@ -572,7 +578,8 @@ class InstallCommand extends Command
                 'shop-country',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Expects an ISO-3166 three-letter country-code. This parameter sets the default country for the default sales-channel.'
+                'Expects an ISO-3166 three-letter country-code. This parameter sets the default country for the default sales-channel.',
+                'GBR'
             )
         ;
     }
@@ -658,6 +665,8 @@ EOT;
         $this->dumpProgress($conn, $dump);
 
         $this->runMigrations();
+
+        $conn->query('SET FOREIGN_KEY_CHECKS = 1;');
     }
 
     private function dumpProgress(\PDO $conn, DumpIterator $dump): void
@@ -687,7 +696,7 @@ EOT;
 
         $coreMigrations->sync();
 
-        $total = count($coreMigrations->getExecutableMigrations());
+        $total = \count($coreMigrations->getExecutableMigrations());
 
         $progress = $this->IOHelper->createProgressBar($total);
         $progress->setRedrawFrequency(20);

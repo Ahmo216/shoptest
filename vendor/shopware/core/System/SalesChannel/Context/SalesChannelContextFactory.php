@@ -139,9 +139,13 @@ class SalesChannelContextFactory
 
         $criteria = new Criteria([$salesChannelId]);
         $criteria->setTitle('context-factory::sales-channel');
-        $criteria->addAssociation('countries');
         $criteria->addAssociation('currency');
         $criteria->addAssociation('domains');
+
+        // @deprecated tag:v6.4.0 - Will be removed
+        if (!Feature::isActive('FEATURE_NEXT_12009')) {
+            $criteria->addAssociation('countries');
+        }
 
         /** @var SalesChannelEntity|null $salesChannel */
         $salesChannel = $this->salesChannelRepository->search($criteria, $context)
@@ -152,13 +156,13 @@ class SalesChannelContextFactory
         }
 
         //load active language, fallback to shop language
-        if (array_key_exists(SalesChannelContextService::LANGUAGE_ID, $options)) {
+        if (\array_key_exists(SalesChannelContextService::LANGUAGE_ID, $options)) {
             $salesChannel->setLanguageId($options[SalesChannelContextService::LANGUAGE_ID]);
         }
 
         //load active currency, fallback to shop currency
         $currency = $salesChannel->getCurrency();
-        if (array_key_exists(SalesChannelContextService::CURRENCY_ID, $options)) {
+        if (\array_key_exists(SalesChannelContextService::CURRENCY_ID, $options)) {
             $currencyId = $options[SalesChannelContextService::CURRENCY_ID];
 
             $criteria = new Criteria([$currencyId]);
@@ -168,7 +172,7 @@ class SalesChannelContextFactory
 
         // customer
         $customer = null;
-        if (array_key_exists(SalesChannelContextService::CUSTOMER_ID, $options) && $options[SalesChannelContextService::CUSTOMER_ID] !== null) {
+        if (\array_key_exists(SalesChannelContextService::CUSTOMER_ID, $options) && $options[SalesChannelContextService::CUSTOMER_ID] !== null) {
             //load logged in customer and set active addresses
             $customer = $this->loadCustomer($options, $context);
         }
@@ -236,7 +240,7 @@ class SalesChannelContextFactory
             []
         );
 
-        if (array_key_exists(SalesChannelContextService::PERMISSIONS, $options)) {
+        if (\array_key_exists(SalesChannelContextService::PERMISSIONS, $options)) {
             $salesChannelContext->setPermissions($options[SalesChannelContextService::PERMISSIONS]);
 
             $event = new SalesChannelContextPermissionsChangedEvent($salesChannelContext, $options[SalesChannelContextService::PERMISSIONS]);
@@ -290,7 +294,7 @@ class SalesChannelContextFactory
     {
         $id = $salesChannel->getPaymentMethodId();
 
-        if (array_key_exists(SalesChannelContextService::PAYMENT_METHOD_ID, $options)) {
+        if (\array_key_exists(SalesChannelContextService::PAYMENT_METHOD_ID, $options)) {
             $id = $options[SalesChannelContextService::PAYMENT_METHOD_ID];
         } elseif ($customer && $customer->getLastPaymentMethodId()) {
             $id = $customer->getLastPaymentMethodId();
@@ -310,7 +314,7 @@ class SalesChannelContextFactory
     {
         $id = $salesChannel->getShippingMethodId();
 
-        if (array_key_exists(SalesChannelContextService::SHIPPING_METHOD_ID, $options)) {
+        if (\array_key_exists(SalesChannelContextService::SHIPPING_METHOD_ID, $options)) {
             $id = $options[SalesChannelContextService::SHIPPING_METHOD_ID];
         }
 
@@ -405,15 +409,13 @@ class SalesChannelContextFactory
         $criteria->addAssociation('defaultShippingAddress.country');
         $criteria->addAssociation('defaultShippingAddress.countryState');
 
-        if (Feature::isActive('FEATURE_NEXT_10555')) {
-            /** @var SalesChannelApiSource $source */
-            $source = $context->getSource();
+        /** @var SalesChannelApiSource $source */
+        $source = $context->getSource();
 
-            $criteria->addFilter(new MultiFilter(MultiFilter::CONNECTION_OR, [
-                new EqualsFilter('customer.boundSalesChannelId', null),
-                new EqualsFilter('customer.boundSalesChannelId', $source->getSalesChannelId()),
-            ]));
-        }
+        $criteria->addFilter(new MultiFilter(MultiFilter::CONNECTION_OR, [
+            new EqualsFilter('customer.boundSalesChannelId', null),
+            new EqualsFilter('customer.boundSalesChannelId', $source->getSalesChannelId()),
+        ]));
 
         $customer = $this->customerRepository->search($criteria, $context)->get($customerId);
 
@@ -446,7 +448,7 @@ class SalesChannelContextFactory
         SalesChannelEntity $salesChannel
     ): ShippingLocation {
         //allows to preview cart calculation for a specify state for not logged in customers
-        if (array_key_exists(SalesChannelContextService::COUNTRY_STATE_ID, $options) && $options[SalesChannelContextService::COUNTRY_STATE_ID]) {
+        if (\array_key_exists(SalesChannelContextService::COUNTRY_STATE_ID, $options) && $options[SalesChannelContextService::COUNTRY_STATE_ID]) {
             $criteria = new Criteria([$options[SalesChannelContextService::COUNTRY_STATE_ID]]);
             $criteria->addAssociation('country');
 
@@ -460,7 +462,7 @@ class SalesChannelContextFactory
         }
 
         $countryId = $salesChannel->getCountryId();
-        if (array_key_exists(SalesChannelContextService::COUNTRY_ID, $options) && $options[SalesChannelContextService::COUNTRY_ID]) {
+        if (\array_key_exists(SalesChannelContextService::COUNTRY_ID, $options) && $options[SalesChannelContextService::COUNTRY_ID]) {
             $countryId = $options[SalesChannelContextService::COUNTRY_ID];
         }
 

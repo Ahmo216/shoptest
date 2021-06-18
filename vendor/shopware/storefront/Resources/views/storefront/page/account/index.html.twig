@@ -46,6 +46,12 @@
                                             </p>
                                         {% endblock %}
 
+                                        {% block page_account_overview_profile_company %}
+                                            {% sw_include '@Storefront/storefront/component/account/customer-overview-personal-company.html.twig' with {
+                                                'customer': context.customer,
+                                            } %}
+                                        {% endblock %}
+
                                         {% block page_account_overview_profile_email %}
                                             <p>
                                                 {{ context.customer.email }}

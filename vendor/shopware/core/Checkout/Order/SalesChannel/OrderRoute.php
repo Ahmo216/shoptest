@@ -5,6 +5,8 @@ namespace Shopware\Core\Checkout\Order\SalesChannel;
 use OpenApi\Annotations as OA;
 use Shopware\Core\Checkout\Cart\Exception\CustomerNotLoggedInException;
 use Shopware\Core\Checkout\Cart\Rule\PaymentMethodRule;
+use Shopware\Core\Checkout\Order\Exception\GuestNotAuthenticatedException;
+use Shopware\Core\Checkout\Order\Exception\WrongGuestCredentialsException;
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Promotion\PromotionCollection;
@@ -12,13 +14,13 @@ use Shopware\Core\Checkout\Promotion\PromotionEntity;
 use Shopware\Core\Content\Rule\RuleEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\EntitySearchResult;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\MultiFilter;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\RangeFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\RequestCriteriaBuilder;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\Entity;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Rule\Container\Container;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Request;
@@ -67,24 +69,23 @@ class OrderRoute extends AbstractOrderRoute
     }
 
     /**
+     * @Since("6.2.0.0")
      * @Entity("order")
      * @OA\Post(
      *      path="/order",
-     *      description="Listing orders",
+     *      summary="Listing orders",
      *      operationId="readOrder",
      *      tags={"Store API", "Order"},
      *      @OA\Parameter(name="Api-Basic-Parameters"),
-     *      @OA\Parameter(
-     *          name="checkPromotion",
-     *          in="get",
-     *          required=false,
-     *          description="wether to check the Promotions of orders",
-     *          @OA\Schema(
-     *              type="boolean"
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              @OA\Property(property="checkPromotion", description="Wether to check the Promotions of orders", type="string"),
      *          )
      *      ),
      *      @OA\Response(
      *          response="200",
+     *          description="",
      *          @OA\JsonContent(type="array", @OA\Items(ref="#/components/schemas/order_flat"))
      *     )
      * )
@@ -96,28 +97,33 @@ class OrderRoute extends AbstractOrderRoute
         if (!$criteria) {
             $criteria = $this->requestCriteriaBuilder->handleRequest($request, new Criteria(), $this->orderDefinition, $context->getContext());
         }
+
         $criteria->addFilter(new EqualsFilter('order.salesChannelId', $context->getSalesChannel()->getId()));
+
+        $criteria->getAssociation('documents')
+            ->addFilter(new EqualsFilter('config.displayInCustomerAccount', 'true'))
+            ->addFilter(new EqualsFilter('sent', true));
+
+        $criteria->addAssociation('billingAddress');
 
         if ($context->getCustomer()) {
             $criteria->addFilter(new EqualsFilter('order.orderCustomer.customerId', $context->getCustomer()->getId()));
         } elseif (!$criteria->hasEqualsFilter('deepLinkCode')) {
             throw new CustomerNotLoggedInException();
-        } else {
-            // Search with deepLinkCode needs updatedAt Filter
-            $latestOrderDate = (new \DateTime())->setTimezone(new \DateTimeZone('UTC'))->modify(-abs(30) . ' Day');
-            $latestOrderChange = $latestOrderDate->format('Y-m-d H:i:s');
-            $criteria->addFilter(
-                new MultiFilter(
-                    MultiFilter::CONNECTION_OR,
-                    [
-                        new RangeFilter('updatedAt', ['gte' => $latestOrderChange]),
-                        new RangeFilter('createdAt', ['gte' => $latestOrderChange]),
-                    ]
-                )
-            );
         }
 
         $orders = $this->orderRepository->search($criteria, $context->getContext());
+
+        if ($criteria->hasEqualsFilter('deepLinkCode')) {
+            $orders = $this->filterOldOrders($orders);
+        }
+
+        // Handle guest authentication if deeplink is set
+        if (!$context->getCustomer() && $criteria->hasEqualsFilter('deepLinkCode')) {
+            /** @var OrderEntity $order */
+            $order = $orders->first();
+            $this->checkGuestAuth($order, $request);
+        }
 
         $response = new OrderRouteResponse($orders);
         if ($request->get('checkPromotion') === true) {
@@ -195,5 +201,38 @@ class OrderRoute extends AbstractOrderRoute
         }
 
         return true;
+    }
+
+    private function filterOldOrders(EntitySearchResult $orders): EntitySearchResult
+    {
+        // Search with deepLinkCode needs updatedAt Filter
+        $latestOrderDate = (new \DateTime())->setTimezone(new \DateTimeZone('UTC'))->modify(-abs(30) . ' Day');
+        $orders = $orders->filter(function (OrderEntity $order) use ($latestOrderDate) {
+            return $order->getCreatedAt() > $latestOrderDate || $order->getUpdatedAt() > $latestOrderDate;
+        });
+
+        return $orders;
+    }
+
+    private function checkGuestAuth(OrderEntity $order, Request $request): void
+    {
+        $orderCustomer = $order->getOrderCustomer();
+        $guest = $orderCustomer !== null && $orderCustomer->getCustomer() !== null && $orderCustomer->getCustomer()->getGuest();
+        // Throw exception when customer is not guest
+        if (!$guest) {
+            throw new CustomerNotLoggedInException();
+        }
+        // Verify email and zip code with this order
+        if ($request->get('email', false) && $request->get('zipcode', false)) {
+            $billingAddress = $order->getAddresses() !== null ? $order->getAddresses()->get($order->getBillingAddressId()) : null;
+            if ($billingAddress === null
+                || $orderCustomer === null
+                || $request->get('email') !== $orderCustomer->getEmail()
+                || $request->get('zipcode') !== $billingAddress->getZipcode()) {
+                throw new WrongGuestCredentialsException();
+            }
+        } else {
+            throw new GuestNotAuthenticatedException();
+        }
     }
 }

@@ -29,11 +29,12 @@ class AdminTest extends TestCase
         $secondActionButton = $manifest->getAdmin()->getActionButtons()[1];
         static::assertEquals('doStuffWithProducts', $secondActionButton->getAction());
         static::assertEquals('product', $secondActionButton->getEntity());
-        static::assertEquals('index', $secondActionButton->getView());
+        static::assertEquals('list', $secondActionButton->getView());
         static::assertEquals('https://swag-test.com/do-stuff', $secondActionButton->getUrl());
         static::assertFalse($secondActionButton->isOpenNewTab());
         static::assertEquals([
             'en-GB' => 'Do Stuff',
+            'de-DE' => 'Mache Dinge',
         ], $secondActionButton->getLabel());
 
         $firstModule = $manifest->getAdmin()->getModules()[0];

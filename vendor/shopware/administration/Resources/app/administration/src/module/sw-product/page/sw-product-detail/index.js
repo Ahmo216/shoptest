@@ -151,6 +151,10 @@ Component.register('sw-product-detail', {
                 .addAssociation('customFieldSets')
                 .addAssociation('featureSet');
 
+            if (this.feature.isActive('FEATURE_NEXT_10078')) {
+                criteria.addAssociation('cmsPage');
+            }
+
             return criteria;
         },
 
@@ -217,6 +221,8 @@ Component.register('sw-product-detail', {
 
     methods: {
         createdComponent() {
+            Shopware.State.dispatch('cmsPageState/resetCmsPageState');
+
             // when create
             if (!this.productId) {
                 // set language to system language
@@ -310,9 +316,16 @@ Component.register('sw-product-detail', {
                     gross: null
                 }];
 
-                this.product.purchasePrices = [];
+                this.product.purchasePrices = [{
+                    currencyId: this.defaultCurrency.id,
+                    net: 0,
+                    linked: true,
+                    gross: 0
+                }];
 
-                this.product.featureSet = this.defaultFeatureSet;
+                if (this.defaultFeatureSet && this.defaultFeatureSet.length > 0) {
+                    this.product.featureSetId = this.defaultFeatureSet[0].id;
+                }
 
                 Shopware.State.commit('swProductDetail/setLoading', ['product', false]);
             });
@@ -327,10 +340,6 @@ Component.register('sw-product-detail', {
                 this.productCriteria
             ).then((res) => {
                 Shopware.State.commit('swProductDetail/setProduct', res);
-
-                // Initialize an empty price collection if the product has no purchase prices
-                this.product.purchasePrices = this.product.purchasePrices || [];
-
 
                 if (this.product.parentId) {
                     this.loadParentProduct();
@@ -432,6 +441,8 @@ Component.register('sw-product-detail', {
                 return new Promise((res) => res());
             }
 
+            this.validateProductListPrices();
+
             if (!this.productId) {
                 if (this.productNumberPreview === this.product.productNumber) {
                     this.numberRangeService.reserve('product').then((response) => {
@@ -445,6 +456,39 @@ Component.register('sw-product-detail', {
             this.isSaveSuccessful = false;
 
             return this.saveProduct().then(this.onSaveFinished);
+        },
+
+        validateProductListPrices() {
+            this.product.prices.forEach(advancedPrice => {
+                this.validateListPrices(advancedPrice.price);
+            });
+            this.validateListPrices(this.product.price);
+        },
+
+        validateListPrices(prices) {
+            if (!prices) {
+                return;
+            }
+
+            prices.forEach(price => {
+                if (!price.listPrice) {
+                    return;
+                }
+
+                if (!price.listPrice.gross && !price.listPrice.net) {
+                    price.listPrice = null;
+                    return;
+                }
+
+                if (!price.listPrice.gross) {
+                    price.listPrice.gross = 0;
+                    return;
+                }
+
+                if (!price.listPrice.net) {
+                    price.listPrice.net = 0;
+                }
+            });
         },
 
         onSaveFinished(response) {

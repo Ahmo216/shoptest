@@ -9,6 +9,9 @@ use Shopware\Core\Framework\DataAbstractionLayer\Field\LongTextField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\StringField;
 use Shopware\Core\Framework\DataAbstractionLayer\FieldCollection;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class AppTranslationDefinition extends EntityTranslationDefinition
 {
     public const ENTITY_NAME = 'app_translation';
@@ -28,6 +31,11 @@ class AppTranslationDefinition extends EntityTranslationDefinition
         return AppTranslationCollection::class;
     }
 
+    public function since(): ?string
+    {
+        return '6.3.1.0';
+    }
+
     protected function getParentDefinitionClass(): string
     {
         return AppDefinition::class;
@@ -38,6 +46,7 @@ class AppTranslationDefinition extends EntityTranslationDefinition
         return new FieldCollection([
             (new StringField('label', 'label'))->addFlags(new Required()),
             new LongTextField('description', 'description'),
+            new LongTextField('privacy_policy_extensions', 'privacyPolicyExtensions'),
         ]);
     }
 }

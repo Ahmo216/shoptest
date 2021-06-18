@@ -15,7 +15,14 @@ Shopware.Service('privileges')
                     'sales_channel:read',
                     'cms_block:read',
                     'cms_slot:read',
-                    'product_sorting:read'
+                    'product_sorting:read',
+                    'product:read',
+                    'property_group:read',
+                    'property_group_option:read',
+                    'product_media:read',
+                    'delivery_time:read',
+                    'product_cross_selling:read',
+                    'product_cross_selling_assigned_products:read'
                 ],
                 dependencies: []
             },
@@ -32,13 +39,10 @@ Shopware.Service('privileges')
                     'cms_block:create',
                     'cms_slot:create',
                     Shopware.Service('privileges').getPrivileges('media.creator'),
-                    'product:read',
-                    'property_group_option:read',
-                    'property_group:read',
                     'product_stream:read',
-                    'product_media:read',
                     'currency:read',
-                    'product_manufacturer:read'
+                    'product_manufacturer:read',
+                    'category:update'
                 ],
                 dependencies: [
                     'cms.viewer'

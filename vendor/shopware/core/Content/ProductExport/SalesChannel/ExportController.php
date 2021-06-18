@@ -17,6 +17,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory;
 use Shopware\Storefront\Event\ProductExportContentTypeEvent;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -66,11 +67,14 @@ class ExportController
     }
 
     /**
+     * @Since("6.3.2.0")
      * @OA\Get(
      *      path="/product-export/{accessKey}/{fileName}",
-     *      description="Export product export",
+     *      summary="Export product export",
      *      operationId="readProductExport",
      *      tags={"Store API", "Product"},
+     *      @OA\Parameter(name="accessKey", description="Access Key", @OA\Schema(type="string"), in="path", required=true),
+     *      @OA\Parameter(name="fileName", description="File Name", @OA\Schema(type="string"), in="path", required=true),
      *      @OA\Response(
      *          response="200",
      *          description=""

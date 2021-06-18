@@ -14,6 +14,9 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class UninstallAppCommand extends Command
 {
     protected static $defaultName = 'app:uninstall';
@@ -51,7 +54,14 @@ class UninstallAppCommand extends Command
             return 1;
         }
 
-        $this->appLifecycle->delete($app->getName(), ['id' => $app->getId()], $context);
+        $this->appLifecycle->delete(
+            $app->getName(),
+            [
+                'id' => $app->getId(),
+                'roleId' => $app->getAclRoleId(),
+            ],
+            $context
+        );
 
         $io->success('App uninstalled successfully.');
 

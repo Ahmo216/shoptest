@@ -10,6 +10,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\MultiFilter;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\Entity;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -35,12 +36,14 @@ class ProductReviewRoute extends AbstractProductReviewRoute
     }
 
     /**
+     * @Since("6.3.2.0")
      * @Entity("product_review")
      * @OA\Post(
      *      path="/product/{productId}/reviews",
-     *      description="",
+     *      summary="",
      *      operationId="readProductReviews",
      *      tags={"Store API","Product"},
+     *      @OA\Parameter(name="productId", description="Product ID", @OA\Schema(type="string"), in="path", required=true),
      *      @OA\Response(
      *          response="200",
      *          description="Found reviews",
@@ -52,7 +55,9 @@ class ProductReviewRoute extends AbstractProductReviewRoute
     public function load(string $productId, Request $request, SalesChannelContext $context, Criteria $criteria): ProductReviewRouteResponse
     {
         $active = new MultiFilter(MultiFilter::CONNECTION_OR, [new EqualsFilter('status', true)]);
-        // ToDo NEXT-10590 - Reimplement check to let users see their own, not published reviews, if display works again
+        if ($customer = $context->getCustomer()) {
+            $active->addQuery(new EqualsFilter('customerId', $customer->getId()));
+        }
 
         $criteria->addFilter(
             new MultiFilter(MultiFilter::CONNECTION_AND, [

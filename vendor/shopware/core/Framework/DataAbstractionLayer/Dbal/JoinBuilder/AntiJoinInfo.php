@@ -4,6 +4,9 @@ namespace Shopware\Core\Framework\DataAbstractionLayer\Dbal\JoinBuilder;
 
 use Shopware\Core\Framework\DataAbstractionLayer\Field\AssociationField;
 
+/**
+ * @deprecated tag:v6.4.0 - Will be removed
+ */
 class AntiJoinInfo
 {
     /**
@@ -25,7 +28,7 @@ class AntiJoinInfo
     {
         foreach ($associations as $association) {
             if (!$association instanceof AssociationField) {
-                throw new \InvalidArgumentException('Expected $associations to be an array of ' . AssociationField::class . ' got ' . get_class($association));
+                throw new \InvalidArgumentException('Expected $associations to be an array of ' . AssociationField::class . ' got ' . \get_class($association));
             }
         }
 

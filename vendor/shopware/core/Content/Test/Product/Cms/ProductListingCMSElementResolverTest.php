@@ -149,7 +149,7 @@ class ProductListingCMSElementResolverTest extends TestCase
             return $actualSorting->getKey();
         });
 
-        $availableSortings = \array_keys($availableSortings);
+        $availableSortings = array_keys($availableSortings);
 
         sort($actualSortings);
         sort($availableSortings);
@@ -196,10 +196,10 @@ class ProductListingCMSElementResolverTest extends TestCase
             return $actualSorting->getKey();
         });
 
-        $actualSortings = \array_values($actualSortings);
+        $actualSortings = array_values($actualSortings);
 
         arsort($availableSortings, SORT_DESC | SORT_NUMERIC);
-        $availableSortings = \array_keys($availableSortings);
+        $availableSortings = array_keys($availableSortings);
 
         static::assertEquals($availableSortings, $actualSortings);
     }
@@ -240,6 +240,206 @@ class ProductListingCMSElementResolverTest extends TestCase
         $sorting = $listing->getSorting();
 
         static::assertEquals($sorting, 'price-asc');
+    }
+
+    /**
+     * @dataProvider filtersProvider
+     */
+    public function testFiltersAndPropertyWhitelist($expectations, $slotConfig): void
+    {
+        $resolverContext = new ResolverContext(
+            $this->salesChannelContext,
+            new Request()
+        );
+
+        $slot = new CmsSlotEntity();
+        $slot->setUniqueIdentifier('id');
+        $slot->setType('product-listing');
+        $slot->setConfig($slotConfig);
+        $slot->addTranslated('config', $slotConfig);
+
+        $this->productListingCMSElementResolver->enrich($slot, $resolverContext, new ElementDataCollection());
+
+        $request = $resolverContext->getRequest();
+
+        foreach ($expectations as $field => $expected) {
+            if ($field === 'property-whitelist') {
+                $value = $request->request->get($field, null);
+            } else {
+                $value = $request->request->get($field, true);
+            }
+
+            static::assertSame($expected, $value);
+        }
+    }
+
+    public function filtersProvider()
+    {
+        $sizeId = Uuid::randomHex();
+        $textileId = Uuid::randomHex();
+
+        return [
+            [
+                [
+                    'manufacturer-filter' => true,
+                    'price-filter' => true,
+                    'rating-filter' => true,
+                    'shipping-free-filter' => true,
+                    'property-filter' => true,
+                    'property-whitelist' => null,
+                ],
+                [
+                    'filters' => [
+                        'value' => null,
+                    ],
+                    'propertyWhitelist' => null,
+                ],
+            ],
+            [
+                [
+                    'manufacturer-filter' => false,
+                    'price-filter' => false,
+                    'rating-filter' => false,
+                    'shipping-free-filter' => false,
+                    'property-filter' => false,
+                    'property-whitelist' => null,
+                ],
+                [
+                    'filters' => [
+                        'value' => 'invalid-filter',
+                    ],
+                    'propertyWhitelist' => null,
+                ],
+            ],
+            [
+                [
+                    'manufacturer-filter' => true,
+                    'price-filter' => false,
+                    'rating-filter' => true,
+                    'shipping-free-filter' => false,
+                    'property-filter' => false,
+                    'property-whitelist' => null,
+                ],
+                [
+                    'filters' => [
+                        'value' => 'invalid-filter,manufacturer-filter,rating-filter',
+                    ],
+                    'propertyWhitelist' => null,
+                ],
+            ],
+            [
+                [
+                    'manufacturer-filter' => true,
+                    'price-filter' => true,
+                    'rating-filter' => true,
+                    'shipping-free-filter' => true,
+                    'property-filter' => true,
+                    'property-whitelist' => null,
+                ],
+                [
+                    'filters' => [
+                        'value' => 'manufacturer-filter,price-filter,rating-filter,property-filter,shipping-free-filter',
+                    ],
+                    'propertyWhitelist' => ['value' => []],
+                ],
+            ],
+            [
+                [
+                    'manufacturer-filter' => false,
+                    'price-filter' => true,
+                    'rating-filter' => true,
+                    'shipping-free-filter' => true,
+                    'property-filter' => true,
+                    'property-whitelist' => null,
+                ],
+                [
+                    'filters' => [
+                        'value' => 'price-filter,rating-filter,property-filter,shipping-free-filter',
+                    ],
+                    'propertyWhitelist' => ['value' => []],
+                ],
+            ],
+            [
+                [
+                    'manufacturer-filter' => false,
+                    'price-filter' => false,
+                    'rating-filter' => true,
+                    'shipping-free-filter' => true,
+                    'property-filter' => true,
+                    'property-whitelist' => null,
+                ],
+                [
+                    'filters' => [
+                        'value' => 'rating-filter,property-filter,shipping-free-filter',
+                    ],
+                    'propertyWhitelist' => ['value' => []],
+                ],
+            ],
+            [
+                [
+                    'manufacturer-filter' => false,
+                    'price-filter' => false,
+                    'rating-filter' => false,
+                    'shipping-free-filter' => true,
+                    'property-filter' => true,
+                    'property-whitelist' => null,
+                ],
+                [
+                    'filters' => [
+                        'value' => 'property-filter,shipping-free-filter',
+                    ],
+                    'propertyWhitelist' => ['value' => []],
+                ],
+            ],
+            [
+                [
+                    'manufacturer-filter' => false,
+                    'price-filter' => false,
+                    'rating-filter' => false,
+                    'shipping-free-filter' => false,
+                    'property-filter' => true,
+                    'property-whitelist' => null,
+                ],
+                [
+                    'filters' => [
+                        'value' => 'property-filter',
+                    ],
+                    'propertyWhitelist' => ['value' => []],
+                ],
+            ],
+            [
+                [
+                    'manufacturer-filter' => false,
+                    'price-filter' => false,
+                    'rating-filter' => false,
+                    'shipping-free-filter' => false,
+                    'property-filter' => false,
+                    'property-whitelist' => null,
+                ],
+                [
+                    'filters' => [
+                        'value' => '',
+                    ],
+                    'propertyWhitelist' => ['value' => []],
+                ],
+            ],
+            [
+                [
+                    'manufacturer-filter' => false,
+                    'price-filter' => false,
+                    'rating-filter' => false,
+                    'shipping-free-filter' => false,
+                    'property-filter' => false,
+                    'property-whitelist' => [$sizeId, $textileId],
+                ],
+                [
+                    'filters' => [
+                        'value' => '',
+                    ],
+                    'propertyWhitelist' => ['value' => [$sizeId, $textileId]],
+                ],
+            ],
+        ];
     }
 
     private function createSalesChannelContext(): SalesChannelContext

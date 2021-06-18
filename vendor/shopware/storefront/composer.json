@@ -1,5 +1,6 @@
 {
     "name": "shopware/storefront",
+    "version": "6.3.5.0",
     "description": "Storefront for Shopware",
     "type": "library",
     "license": "MIT",
@@ -22,7 +23,6 @@
             "dev-master": "6.3.x-dev"
         }
     },
-    "version": "6.3.3.0",
     "require": {
         "cocur/slugify": "4.0.0",
         "doctrine/dbal": "2.10.1",

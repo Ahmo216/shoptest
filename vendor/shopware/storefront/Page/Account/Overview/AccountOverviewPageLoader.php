@@ -59,16 +59,26 @@ class AccountOverviewPageLoader
      * @throws InconsistentCriteriaIdsException
      * @throws MissingRequestParameterException
      */
-    public function load(Request $request, SalesChannelContext $salesChannelContext): AccountOverviewPage
+    public function load(Request $request, SalesChannelContext $salesChannelContext, ?CustomerEntity $customer = null): AccountOverviewPage
     {
+        /* @deprecated tag:v6.4.0 - remove validate customer block*/
         if (!$salesChannelContext->getCustomer() instanceof CustomerEntity) {
             throw new CustomerNotLoggedInException();
+        }
+
+        /* @deprecated tag:v6.4.0 - Parameter $customer will be mandatory*/
+        if (!$customer) {
+            $customer = $salesChannelContext->getCustomer();
         }
 
         $page = $this->genericLoader->load($request, $salesChannelContext);
 
         $page = AccountOverviewPage::createFrom($page);
-        $page->setCustomer($this->loadCustomer($salesChannelContext));
+        $page->setCustomer($this->loadCustomer($salesChannelContext, $customer));
+
+        if ($page->getMetaInformation()) {
+            $page->getMetaInformation()->setRobots('noindex,follow');
+        }
 
         $order = $this->loadNewestOrder($salesChannelContext, $request);
 
@@ -93,6 +103,7 @@ class AccountOverviewPageLoader
             ->addAssociation('deliveries.shippingMethod')
             ->addAssociation('addresses')
             ->addAssociation('currency')
+            ->addAssociation('documents.documentType')
             ->setLimit(1)
             ->addAssociation('orderCustomer');
 
@@ -109,11 +120,11 @@ class AccountOverviewPageLoader
         return $responseStruct->getOrders()->first();
     }
 
-    private function loadCustomer(SalesChannelContext $context): CustomerEntity
+    private function loadCustomer(SalesChannelContext $context, CustomerEntity $customer): CustomerEntity
     {
         $criteria = new Criteria();
         $criteria->addAssociation('requestedGroup');
 
-        return $this->customerRoute->load(new Request(), $context, $criteria)->getCustomer();
+        return $this->customerRoute->load(new Request(), $context, $criteria, $customer)->getCustomer();
     }
 }

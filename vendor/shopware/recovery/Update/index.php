@@ -1,5 +1,9 @@
 <?php declare(strict_types=1);
 
+if (\function_exists('opcache_reset')) {
+    opcache_reset();
+}
+
 require_once __DIR__ . '/../autoload.php';
 
 define('UPDATE_PATH', __DIR__);
@@ -20,7 +24,7 @@ if ($isManual) {
 use Shopware\Recovery\Update\Console\Application;
 use Symfony\Component\Console\Input\ArgvInput;
 
-if (PHP_SAPI === 'cli') {
+if (\PHP_SAPI === 'cli') {
     error_reporting(-1);
     ini_set('display_errors', '1');
 

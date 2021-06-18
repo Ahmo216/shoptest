@@ -10,6 +10,9 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class ResolveAppUrlChangeCommand extends Command
 {
     protected static $defaultName = 'app:url-change:resolve';
@@ -40,7 +43,7 @@ class ResolveAppUrlChangeCommand extends Command
         /** @var string|null $strategy */
         $strategy = $input->getArgument('strategy');
 
-        if ($strategy === null || !array_key_exists($strategy, $availableStrategies)) {
+        if ($strategy === null || !\array_key_exists($strategy, $availableStrategies)) {
             if ($strategy !== null) {
                 $io->note('Strategy with name: "' . $strategy . '" not found.');
             }

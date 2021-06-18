@@ -13,6 +13,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\EntitySearchResult;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepositoryInterface;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -66,11 +67,12 @@ class SalesChannelCrossSellingController extends AbstractController
     }
 
     /**
-     * * @OA\Get(
+     * @Since("6.1.0.0")
+     * @OA\Get(
      *      path="/product/{id}/cross-selling",
-     *      description="Get the cross selling products for given product",
+     *      summary="Get the cross selling products for given product",
      *      operationId="getCrossSelling",
-     *      tags={"Sales Channel Api"},
+     *      tags={"Sales Channel API", "Crosselling"},
      *      @OA\Parameter(
      *          parameter="id",
      *          name="id",
@@ -112,7 +114,6 @@ class SalesChannelCrossSellingController extends AbstractController
      *          ref="#/components/responses/401"
      *      )
      * )
-     *CrossSellingLoader
      * @Route("/sales-channel-api/v{version}/product/{id}/cross-selling", name="sales-channel-api.product.cross-selling", methods={"GET"})
      */
     public function getCrossSelling(string $id, int $version, SalesChannelContext $context): JsonResponse

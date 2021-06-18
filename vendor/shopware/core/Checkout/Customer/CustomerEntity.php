@@ -6,6 +6,7 @@ use Shopware\Core\Checkout\Customer\Aggregate\CustomerAddress\CustomerAddressCol
 use Shopware\Core\Checkout\Customer\Aggregate\CustomerAddress\CustomerAddressEntity;
 use Shopware\Core\Checkout\Customer\Aggregate\CustomerGroup\CustomerGroupEntity;
 use Shopware\Core\Checkout\Customer\Aggregate\CustomerRecovery\CustomerRecoveryEntity;
+use Shopware\Core\Checkout\Customer\Aggregate\CustomerWishlist\CustomerWishlistCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerCollection;
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
 use Shopware\Core\Checkout\Promotion\PromotionCollection;
@@ -98,6 +99,11 @@ class CustomerEntity extends Entity
      * @var string|null
      */
     protected $title;
+
+    /**
+     * @var array|null
+     */
+    protected $vatIds;
 
     /**
      * @var string|null
@@ -300,18 +306,19 @@ class CustomerEntity extends Entity
     protected $requestedGroup;
 
     /**
-     * @internal (flag:FEATURE_NEXT_10555)
-     *
      * @var string|null
      */
     protected $boundSalesChannelId;
 
     /**
-     * @internal (flag:FEATURE_NEXT_10555)
-     *
      * @var SalesChannelEntity|null
      */
     protected $boundSalesChannel;
+
+    /**
+     * @var CustomerWishlistCollection|null
+     */
+    protected $wishlists;
 
     public function __toString()
     {
@@ -466,6 +473,16 @@ class CustomerEntity extends Entity
     public function setTitle(?string $title): void
     {
         $this->title = $title;
+    }
+
+    public function getVatIds(): ?array
+    {
+        return $this->vatIds;
+    }
+
+    public function setVatIds(?array $vatIds): void
+    {
+        $this->vatIds = $vatIds;
     }
 
     public function getActive(): bool
@@ -887,5 +904,15 @@ class CustomerEntity extends Entity
     public function setBoundSalesChannel(SalesChannelEntity $boundSalesChannel): void
     {
         $this->boundSalesChannel = $boundSalesChannel;
+    }
+
+    public function getWishlists(): ?CustomerWishlistCollection
+    {
+        return $this->wishlists;
+    }
+
+    public function setWishlists(CustomerWishlistCollection $wishlists): void
+    {
+        $this->wishlists = $wishlists;
     }
 }

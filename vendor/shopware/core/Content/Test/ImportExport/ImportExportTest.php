@@ -7,6 +7,10 @@ use PHPUnit\Framework\TestCase;
 use Shopware\Core\Content\Category\CategoryDefinition;
 use Shopware\Core\Content\ImportExport\Aggregate\ImportExportFile\ImportExportFileEntity;
 use Shopware\Core\Content\ImportExport\Aggregate\ImportExportLog\ImportExportLogEntity;
+use Shopware\Core\Content\ImportExport\Event\ImportExportAfterImportRecordEvent;
+use Shopware\Core\Content\ImportExport\Event\ImportExportBeforeExportRecordEvent;
+use Shopware\Core\Content\ImportExport\Event\ImportExportBeforeImportRecordEvent;
+use Shopware\Core\Content\ImportExport\Event\ImportExportExceptionImportRecordEvent;
 use Shopware\Core\Content\ImportExport\ImportExport;
 use Shopware\Core\Content\ImportExport\ImportExportFactory;
 use Shopware\Core\Content\ImportExport\Processing\Pipe\AbstractPipe;
@@ -39,7 +43,10 @@ use Shopware\Core\Framework\Test\TestCaseBase\RequestStackTestBehaviour;
 use Shopware\Core\Framework\Test\TestCaseBase\SalesChannelApiTestBehaviour;
 use Shopware\Core\Framework\Test\TestCaseBase\SessionTestBehaviour;
 use Shopware\Core\Framework\Uuid\Uuid;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpKernel\Debug\TraceableEventDispatcher;
+use Symfony\Contracts\EventDispatcher\Event;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class ImportExportTest extends TestCase
@@ -60,9 +67,16 @@ class ImportExportTest extends TestCase
      */
     private $productRepository;
 
+    /**
+     * @var TraceableEventDispatcher
+     */
+    private $listener;
+
     public function setUp(): void
     {
         $this->productRepository = $this->getContainer()->get('product.repository');
+
+        $this->listener = $this->getContainer()->get(EventDispatcherInterface::class);
 
         $connection = $this->getContainer()->get(Connection::class);
 
@@ -90,6 +104,48 @@ class ImportExportTest extends TestCase
         $connection->rollBack();
 
         $connection->setNestTransactionsWithSavepoints(false);
+    }
+
+    public function testExportEvents(): void
+    {
+        $this->listener->addSubscriber(new StockSubscriber());
+
+        $factory = $this->getContainer()->get(ImportExportFactory::class);
+        $filesystem = $this->getContainer()->get('shopware.filesystem.private');
+
+        /** @var ImportExportService $importExportService */
+        $importExportService = $this->getContainer()->get(ImportExportService::class);
+
+        $profileId = $this->getDefaultProfileId(ProductDefinition::ENTITY_NAME);
+
+        $expireDate = new \DateTimeImmutable('2099-01-01');
+        $logEntity = $importExportService->prepareExport(Context::createDefaultContext(), $profileId, $expireDate);
+
+        $importExport = $factory->create($logEntity->getId());
+
+        $productId = Uuid::randomHex();
+        $product = $this->getTestProduct($productId);
+        $newStock = (int) $product['stock'] + 1;
+
+        $criteria = new Criteria([$productId]);
+        $importExport->export(Context::createDefaultContext(), $criteria, 0);
+
+        $events = array_column($this->listener->getCalledListeners(), 'event');
+        static::assertContains(ImportExportBeforeExportRecordEvent::class, $events);
+
+        $csv = $filesystem->read($logEntity->getFile()->getPath());
+        static::assertStringContainsString(";{$newStock};", $csv);
+    }
+
+    public function testImportEvents(): void
+    {
+        $this->listener->addSubscriber(new TestSubscriber());
+        $this->importCategoryCsv();
+        $events = array_column($this->listener->getCalledListeners(), 'event');
+
+        static::assertContains(ImportExportBeforeImportRecordEvent::class, $events);
+        static::assertContains(ImportExportAfterImportRecordEvent::class, $events);
+        static::assertNotContains(ImportExportExceptionImportRecordEvent::class, $events);
     }
 
     public function testImportExport(): void
@@ -127,7 +183,7 @@ class ImportExportTest extends TestCase
 
         $this->productRepository->delete([['id' => $productId]], Context::createDefaultContext());
         $exportFileTmp = tempnam(sys_get_temp_dir(), '');
-        \file_put_contents($exportFileTmp, $filesystem->read($logEntity->getFile()->getPath()));
+        file_put_contents($exportFileTmp, $filesystem->read($logEntity->getFile()->getPath()));
 
         $uploadedFile = new UploadedFile($exportFileTmp, 'test.csv', $logEntity->getProfile()->getFileType());
 
@@ -211,7 +267,7 @@ class ImportExportTest extends TestCase
 
         $exportFileTmp = tempnam(sys_get_temp_dir(), '');
 
-        \file_put_contents($exportFileTmp, $filesystem->read($logEntity->getFile()->getPath()));
+        file_put_contents($exportFileTmp, $filesystem->read($logEntity->getFile()->getPath()));
         $file = new UploadedFile($exportFileTmp, 'test.csv', $logEntity->getProfile()->getFileType());
 
         $expireDate = new \DateTimeImmutable('2099-01-01');
@@ -288,7 +344,7 @@ class ImportExportTest extends TestCase
         $repo->delete([['id' => $testData['id']]], Context::createDefaultContext());
 
         $exportFileTmp = tempnam(sys_get_temp_dir(), '');
-        \file_put_contents($exportFileTmp, $filesystem->read($logEntity->getFile()->getPath()));
+        file_put_contents($exportFileTmp, $filesystem->read($logEntity->getFile()->getPath()));
 
         $uploadedFile = new UploadedFile($exportFileTmp, 'test.csv', $logEntity->getProfile()->getFileType());
         $expireDate = new \DateTimeImmutable('2099-01-01');
@@ -367,7 +423,7 @@ class ImportExportTest extends TestCase
         static::assertGreaterThan(0, $filesystem->getSize($logEntity->getFile()->getPath()));
 
         $exportFileTmp = tempnam(sys_get_temp_dir(), '');
-        \file_put_contents($exportFileTmp, $filesystem->read($logEntity->getFile()->getPath()));
+        file_put_contents($exportFileTmp, $filesystem->read($logEntity->getFile()->getPath()));
 
         $expireDate = new \DateTimeImmutable('2099-01-01');
         $uploadedFile = new UploadedFile($exportFileTmp, 'test.csv', $logEntity->getProfile()->getFileType());
@@ -391,14 +447,14 @@ class ImportExportTest extends TestCase
 
         $ids = array_column($groups, 'id');
         $actual = $repository->searchIds(new Criteria($ids), Context::createDefaultContext());
-        static::assertCount(count($ids), $actual->getIds());
+        static::assertCount(\count($ids), $actual->getIds());
 
         /** @var EntityRepositoryInterface $optionRepository */
         $optionRepository = $this->getContainer()->get('property_group_option.repository');
         foreach ($groups as $group) {
             $ids = array_column($group['options'], 'id');
             $actual = $optionRepository->searchIds(new Criteria($ids), Context::createDefaultContext());
-            static::assertCount(count($ids), $actual->getIds());
+            static::assertCount(\count($ids), $actual->getIds());
         }
     }
 
@@ -899,3 +955,48 @@ class ImportExportTest extends TestCase
         return new \DateTimeImmutable((new \DateTimeImmutable($str))->format(\DateTime::ATOM));
     }
 }
+
+// phpcs:disable
+class TestSubscriber implements EventSubscriberInterface
+{
+    public static function getSubscribedEvents(): array
+    {
+        return [
+            ImportExportBeforeImportRecordEvent::class => 'foo',
+            ImportExportAfterImportRecordEvent::class => 'foo',
+            ImportExportExceptionImportRecordEvent::class => 'foo',
+        ];
+    }
+
+    public function foo(Event $event): void
+    {
+        //will be called on foo
+    }
+}
+
+class StockSubscriber implements EventSubscriberInterface
+{
+    public static function getSubscribedEvents(): array
+    {
+        return [
+            ImportExportBeforeExportRecordEvent::class => 'onExport',
+        ];
+    }
+
+    public function onExport(ImportExportBeforeExportRecordEvent $event): void
+    {
+        if ($event->getConfig()->get('sourceEntity') !== 'product') {
+            return;
+        }
+
+        $keys = $event->getConfig()->getMapping()->getKeys();
+        if (!\in_array('stock', $keys, true)) {
+            return;
+        }
+
+        $record = $event->getRecord();
+        $record['stock'] = $record['stock'] + 1;
+        $event->setRecord($record);
+    }
+}
+// phpcs:enable

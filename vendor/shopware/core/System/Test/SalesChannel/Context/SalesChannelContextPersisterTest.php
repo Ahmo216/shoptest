@@ -6,8 +6,8 @@ use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Test\TestCaseBase\IntegrationTestBehaviour;
+use Shopware\Core\Framework\Test\TestCaseBase\SalesChannelApiTestBehaviour;
 use Shopware\Core\Framework\Util\Random;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\SalesChannel\Context\SalesChannelContextPersister;
@@ -16,6 +16,7 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 class SalesChannelContextPersisterTest extends TestCase
 {
     use IntegrationTestBehaviour;
+    use SalesChannelApiTestBehaviour;
 
     /**
      * @var Connection
@@ -51,13 +52,11 @@ class SalesChannelContextPersisterTest extends TestCase
 
     public function testLoadByCustomerId(): void
     {
-        Feature::skipTestIfInActive('FEATURE_NEXT_10058', $this);
-
         $token = Uuid::randomHex();
         $customerId = $this->createCustomer();
-        $this->contextPersister->save($token, [], $customerId);
+        $this->contextPersister->save($token, [], Defaults::SALES_CHANNEL, $customerId);
 
-        static::assertNotEmpty($result = $this->contextPersister->load($token, $customerId));
+        static::assertNotEmpty($result = $this->contextPersister->load($token, Defaults::SALES_CHANNEL, $customerId));
         static::assertEquals($token, $result['token']);
     }
 
@@ -70,12 +69,10 @@ class SalesChannelContextPersisterTest extends TestCase
 
     public function testLoadCustomerNotExisting(): void
     {
-        Feature::skipTestIfInActive('FEATURE_NEXT_10058', $this);
-
         $customerId = Uuid::randomHex();
         $token = Random::getAlphanumericString(32);
 
-        static::assertSame([], $this->contextPersister->load($token, $customerId));
+        static::assertSame([], $this->contextPersister->load($token, Defaults::SALES_CHANNEL, $customerId));
     }
 
     public function testSaveWithoutExistingContext(): void
@@ -92,8 +89,6 @@ class SalesChannelContextPersisterTest extends TestCase
 
     public function testSaveNewCustomerContextWithoutExistingCustomer(): void
     {
-        Feature::skipTestIfInActive('FEATURE_NEXT_10058', $this);
-
         $token = Random::getAlphanumericString(32);
         $expected = [
             'key' => 'value',
@@ -102,9 +97,9 @@ class SalesChannelContextPersisterTest extends TestCase
 
         $customerId = $this->createCustomer();
 
-        $this->contextPersister->save($token, $expected, $customerId);
+        $this->contextPersister->save($token, $expected, Defaults::SALES_CHANNEL, $customerId);
 
-        $result = $this->contextPersister->load($token, $customerId);
+        $result = $this->contextPersister->load($token, Defaults::SALES_CHANNEL, $customerId);
 
         static::assertNotEmpty($result);
 
@@ -134,6 +129,7 @@ class SalesChannelContextPersisterTest extends TestCase
             'second' => 'overwritten',
             'third' => 'third test',
         ];
+
         $actual = $this->contextPersister->load($token);
         ksort($actual);
 
@@ -142,8 +138,6 @@ class SalesChannelContextPersisterTest extends TestCase
 
     public function testSaveCustomerContextMergesWithExisting(): void
     {
-        Feature::skipTestIfInActive('FEATURE_NEXT_10058', $this);
-
         $token = Random::getAlphanumericString(32);
 
         $customerId = $this->createCustomer();
@@ -154,12 +148,14 @@ class SalesChannelContextPersisterTest extends TestCase
                 'first' => 'test',
                 'second' => 'second test',
             ]),
+            'sales_channel_id' => Uuid::fromHexToBytes(Defaults::SALES_CHANNEL),
+            'customer_id' => Uuid::fromHexToBytes($customerId),
         ]);
 
         $this->contextPersister->save($token, [
             'second' => 'overwritten',
             'third' => 'third test',
-        ], $customerId);
+        ], Defaults::SALES_CHANNEL, $customerId);
 
         $expected = [
             'first' => 'test',
@@ -167,10 +163,58 @@ class SalesChannelContextPersisterTest extends TestCase
             'third' => 'third test',
             'token' => $token,
         ];
-        $actual = $this->contextPersister->load($token, $customerId);
+        $actual = $this->contextPersister->load($token, Defaults::SALES_CHANNEL, $customerId);
         ksort($actual);
 
         static::assertSame($expected, $actual);
+    }
+
+    public function testLoadSameCustomerOnDifferentSalesChannel(): void
+    {
+        $customerId = $this->createCustomer();
+
+        $salesChannel1 = $this->createSalesChannel([
+            'id' => Uuid::randomHex(),
+            'domains' => [
+                [
+                    'url' => 'http://test.en',
+                    'currencyId' => Defaults::CURRENCY,
+                    'languageId' => Defaults::LANGUAGE_SYSTEM,
+                    'snippetSetId' => $this->getRandomId('snippet_set'),
+                ],
+            ],
+        ]);
+
+        $salesChannel2 = $this->createSalesChannel([
+            'id' => Uuid::randomHex(),
+            'domains' => [
+                [
+                    'url' => 'http://test.de',
+                    'currencyId' => Defaults::CURRENCY,
+                    'languageId' => Defaults::LANGUAGE_SYSTEM,
+                    'snippetSetId' => $this->getRandomId('snippet_set'),
+                ],
+            ],
+        ]);
+
+        $token1 = Uuid::randomHex();
+        $token2 = Uuid::randomHex();
+
+        $this->contextPersister->save($token1, [], $salesChannel1['id'], $customerId);
+        $this->contextPersister->save($token2, [], $salesChannel2['id'], $customerId);
+
+        // Without saved context sales channel
+        static::assertEmpty($this->contextPersister->load($token1, Defaults::SALES_CHANNEL, $customerId));
+        static::assertEmpty($this->contextPersister->load($token2, Defaults::SALES_CHANNEL, $customerId));
+
+        $contextPayload1 = $this->contextPersister->load(Uuid::randomHex(), $salesChannel1['id'], $customerId);
+        static::assertNotEmpty($contextPayload1);
+        static::assertEquals($token1, $contextPayload1['token']);
+
+        $contextPayload2 = $this->contextPersister->load(Uuid::randomHex(), $salesChannel2['id'], $customerId);
+
+        static::assertNotEmpty($contextPayload2);
+        static::assertEquals($token2, $contextPayload2['token']);
     }
 
     public function testReplaceWithoutExistingContext(): void

@@ -89,6 +89,7 @@ function createWrapper(privileges = []) {
             'sw-button': true,
             'sw-button-process': true,
             'sw-field': true,
+            'sw-switch-field': true,
             'sw-icon': true,
             'sw-simple-search-field': true,
             'sw-context-menu-item': true,
@@ -153,6 +154,12 @@ describe('module/sw-settings-country/page/sw-settings-country-detail', () => {
         const countryTaxFreeField = wrapper.find(
             'sw-field-stub[label="sw-settings-country.detail.labelTaxFree"]'
         );
+        const countryCompaniesTaxFreeField = wrapper.find(
+            'sw-switch-field-stub[label="sw-settings-country.detail.labelCompanyTaxFree"]'
+        );
+        const countryCheckVatIdFormatField = wrapper.find(
+            'sw-switch-field-stub[label="sw-settings-country.detail.labelCheckVatIdFormat"]'
+        );
         const countryForceStateInRegistrationField = wrapper.find(
             'sw-field-stub[label="sw-settings-country.detail.labelForceStateInRegistration"]'
         );
@@ -165,6 +172,8 @@ describe('module/sw-settings-country/page/sw-settings-country-detail', () => {
         expect(countryActiveField.attributes().disabled).toBeUndefined();
         expect(countryShippingAvailableField.attributes().disabled).toBeUndefined();
         expect(countryTaxFreeField.attributes().disabled).toBeUndefined();
+        expect(countryCompaniesTaxFreeField.attributes().disabled).toBeUndefined();
+        expect(countryCheckVatIdFormatField.attributes().disabled).toBeUndefined();
         expect(countryForceStateInRegistrationField.attributes().disabled).toBeUndefined();
     });
 
@@ -196,6 +205,12 @@ describe('module/sw-settings-country/page/sw-settings-country-detail', () => {
         const countryTaxFreeField = wrapper.find(
             'sw-field-stub[label="sw-settings-country.detail.labelTaxFree"]'
         );
+        const countryCompaniesTaxFreeField = wrapper.find(
+            'sw-switch-field-stub[label="sw-settings-country.detail.labelCompanyTaxFree"]'
+        );
+        const countryCheckVatIdFormatField = wrapper.find(
+            'sw-switch-field-stub[label="sw-settings-country.detail.labelCheckVatIdFormat"]'
+        );
         const countryForceStateInRegistrationField = wrapper.find(
             'sw-field-stub[label="sw-settings-country.detail.labelForceStateInRegistration"]'
         );
@@ -208,6 +223,8 @@ describe('module/sw-settings-country/page/sw-settings-country-detail', () => {
         expect(countryActiveField.attributes().disabled).toBeTruthy();
         expect(countryShippingAvailableField.attributes().disabled).toBeTruthy();
         expect(countryTaxFreeField.attributes().disabled).toBeTruthy();
+        expect(countryCompaniesTaxFreeField.attributes().disabled).toBeTruthy();
+        expect(countryCheckVatIdFormatField.attributes().disabled).toBeTruthy();
         expect(countryForceStateInRegistrationField.attributes().disabled).toBeTruthy();
     });
 

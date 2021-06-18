@@ -4,6 +4,7 @@ namespace Shopware\Core\Content\Test\Product\Repository;
 
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
+use Shopware\Core\Content\Cms\CmsPageEntity;
 use Shopware\Core\Content\Product\Aggregate\ProductManufacturer\ProductManufacturerEntity;
 use Shopware\Core\Content\Product\Aggregate\ProductMedia\ProductMediaEntity;
 use Shopware\Core\Content\Product\Aggregate\ProductPrice\ProductPriceEntity;
@@ -16,14 +17,17 @@ use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Api\Context\SystemSource;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\Event\EntityWrittenContainerEvent;
 use Shopware\Core\Framework\DataAbstractionLayer\Event\EntityWrittenEvent;
 use Shopware\Core\Framework\DataAbstractionLayer\Pricing\Price;
 use Shopware\Core\Framework\DataAbstractionLayer\Pricing\PriceCollection;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\AndFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\IdSearchResult;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\DataAbstractionLayer\Write\WriteException;
+use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Test\IdsCollection;
 use Shopware\Core\Framework\Test\TestCaseBase\IntegrationTestBehaviour;
 use Shopware\Core\Framework\Test\TestCaseHelper\CallableClass;
@@ -202,6 +206,57 @@ class ProductRepositoryTest extends TestCase
         static::assertInstanceOf(ProductEntity::class, $variant);
 
         static::assertNull($variant->getName());
+    }
+
+    public function testUpdatedProductChildCountOnVariantDeletion(): void
+    {
+        $parentId = Uuid::randomHex();
+        $variantId = Uuid::randomHex();
+        $secondVariantId = Uuid::randomHex();
+
+        $products = [
+            [
+                'id' => $parentId,
+                'productNumber' => Uuid::randomHex(),
+                'stock' => 10,
+                'price' => [
+                    ['currencyId' => Defaults::CURRENCY, 'gross' => 15, 'net' => 10, 'linked' => false],
+                ],
+                'manufacturer' => ['name' => 'test'],
+                'tax' => ['name' => 'test', 'taxRate' => 15],
+                // name should be required
+                'name' => 'parent',
+            ],
+            [
+                'id' => $variantId,
+                'productNumber' => Uuid::randomHex(),
+                'parentId' => $parentId,
+                'stock' => 15,
+            ],
+            [
+                'id' => $secondVariantId,
+                'productNumber' => Uuid::randomHex(),
+                'parentId' => $parentId,
+                'stock' => 15,
+            ],
+        ];
+
+        $this->repository->create($products, $this->context);
+        $delete = $this->repository->delete([['id' => $secondVariantId]], $this->context);
+        static::assertInstanceOf(EntityWrittenContainerEvent::class, $delete);
+
+        $ids = $delete->getPrimaryKeys('product');
+
+        static::assertCount(2, $ids);
+        static::assertContains($parentId, $ids);
+        static::assertContains($secondVariantId, $ids);
+
+        $product = $this->repository
+            ->search(new Criteria([$parentId]), $this->context)
+            ->first();
+
+        static::assertInstanceOf(ProductEntity::class, $product);
+        static::assertEquals(1, $product->getChildCount());
     }
 
     public function testNameIsRequiredForParent(): void
@@ -1664,8 +1719,10 @@ class ProductRepositoryTest extends TestCase
         static::assertContains($categoryId, $categories->getIds());
 
         $criteria = new Criteria();
-        $criteria->addFilter(new EqualsFilter('category.products.price', $parentPrice['gross']));
-        $criteria->addFilter(new EqualsFilter('category.products.parentId', null));
+        $criteria->addFilter(new AndFilter([
+            new EqualsFilter('category.products.price', $parentPrice['gross']),
+            new EqualsFilter('category.products.parentId', null),
+        ]));
 
         $repository = $this->getContainer()->get('category.repository');
         $categories = $repository->searchIds($criteria, $context);
@@ -2044,6 +2101,46 @@ class ProductRepositoryTest extends TestCase
 
         static::assertSame($colorId, $red->getOption()->getGroupId());
         static::assertSame($colorId, $blue->getOption()->getGroupId());
+    }
+
+    public function testCreateAndAssignCMSPage(): void
+    {
+        Feature::skipTestIfInActive('FEATURE_NEXT_10078', $this);
+
+        $id = Uuid::randomHex();
+
+        $cmsPageId = Uuid::randomHex();
+
+        $this->getContainer()->get('cms_page.repository')->create(
+            [
+                [
+                    'id' => $cmsPageId,
+                    'type' => 'product_detail',
+                ],
+            ],
+            $this->context
+        );
+
+        $data = [
+            'id' => $id,
+            'productNumber' => Uuid::randomHex(),
+            'name' => 'test',
+            'stock' => 10,
+            'tax' => ['name' => 'test', 'taxRate' => 15],
+            'price' => [['currencyId' => Defaults::CURRENCY, 'gross' => 10, 'net' => 9, 'linked' => false]],
+            'manufacturer' => ['name' => 'test'],
+            'cmsPageId' => $cmsPageId,
+        ];
+
+        $this->repository->create([$data], Context::createDefaultContext());
+
+        $criteria = new Criteria([$id]);
+        $criteria->addAssociation('cmsPage');
+        /** @var ProductEntity $product */
+        $product = $this->repository->search($criteria, Context::createDefaultContext())->get($id);
+        static::assertSame($cmsPageId, $product->getCmsPageId());
+        static::assertEquals(CmsPageEntity::class, \get_class($product->getCmsPage()));
+        static::assertEquals('product_detail', $product->getCmsPage()->getType());
     }
 
     public function testModifyProductPriceMatrix(): void

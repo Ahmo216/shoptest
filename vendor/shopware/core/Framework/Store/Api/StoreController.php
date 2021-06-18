@@ -9,11 +9,13 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\RequestCriteriaBuilder;
+use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Plugin\PluginCollection;
 use Shopware\Core\Framework\Plugin\PluginEntity;
 use Shopware\Core\Framework\Plugin\PluginLifecycleService;
 use Shopware\Core\Framework\Plugin\PluginManagementService;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Store\Exception\CanNotDownloadPluginManagedByComposerException;
 use Shopware\Core\Framework\Store\Exception\StoreApiException;
 use Shopware\Core\Framework\Store\Exception\StoreInvalidCredentialsException;
@@ -29,6 +31,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
+ * @internal
  * @RouteScope(scopes={"api"})
  */
 class StoreController extends AbstractStoreController
@@ -83,6 +86,7 @@ class StoreController extends AbstractStoreController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/store/ping", name="api.custom.store.ping", methods={"GET"})
      */
     public function pingStoreAPI(): Response
@@ -97,6 +101,7 @@ class StoreController extends AbstractStoreController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/store/login", name="api.custom.store.login", methods={"POST"})
      */
     public function login(RequestDataBag $requestDataBag, QueryDataBag $queryDataBag, Context $context): JsonResponse
@@ -129,6 +134,7 @@ class StoreController extends AbstractStoreController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/store/checklogin", name="api.custom.store.checklogin", methods={"POST"})
      */
     public function checkLogin(Context $context): Response
@@ -147,6 +153,7 @@ class StoreController extends AbstractStoreController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/store/logout", name="api.custom.store.logout", methods={"POST"})
      */
     public function logout(Context $context): Response
@@ -161,6 +168,7 @@ class StoreController extends AbstractStoreController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/store/licenses", name="api.custom.store.licenses", methods={"GET"})
      */
     public function getLicenseList(QueryDataBag $queryDataBag, Context $context): JsonResponse
@@ -181,6 +189,7 @@ class StoreController extends AbstractStoreController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/store/updates", name="api.custom.store.updates", methods={"GET"})
      */
     public function getUpdateList(Request $request, Context $context): JsonResponse
@@ -209,6 +218,7 @@ class StoreController extends AbstractStoreController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/store/download", name="api.custom.store.download", methods={"GET"})
      */
     public function downloadPlugin(QueryDataBag $queryDataBag, Context $context): JsonResponse
@@ -244,16 +254,23 @@ class StoreController extends AbstractStoreController
             return new JsonResponse(null, $statusCode);
         }
 
-        /** @var PluginEntity|null $plugin */
-        $plugin = $this->pluginRepo->search($criteria, $context)->first();
-        if ($plugin && $plugin->getUpgradeVersion()) {
-            $this->pluginLifecycleService->updatePlugin($plugin, $context);
+        /*
+         * @deprecated tag:v6.4.0 - (flag:FEATURE_NEXT_12957) Plugin download and update will be handled separately
+         */
+        if (!Feature::isActive('FEATURE_NEXT_12957')) {
+            /** @var PluginEntity|null $plugin */
+            $plugin = $this->pluginRepo->search($criteria, $context)->first();
+
+            if ($plugin && $plugin->getUpgradeVersion()) {
+                $this->pluginLifecycleService->updatePlugin($plugin, $context);
+            }
         }
 
         return new JsonResponse();
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/store/license-violations", name="api.custom.store.license-violations", methods={"POST"})
      */
     public function getLicenseViolations(Request $request, Context $context): JsonResponse
@@ -282,6 +299,7 @@ class StoreController extends AbstractStoreController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/store/plugin/search", name="api.action.store.plugin.search", methods={"POST"})
      */
     public function searchPlugins(Request $request, Context $context): Response
@@ -311,5 +329,10 @@ class StoreController extends AbstractStoreController
             'total' => $searchResult->count(),
             'items' => $plugins,
         ]);
+    }
+
+    public function categoriesAction(Context $context): Response
+    {
+        return new JsonResponse($this->storeClient->getCategories($context));
     }
 }

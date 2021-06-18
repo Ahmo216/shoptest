@@ -68,9 +68,12 @@
       "labelMetaTitle": "Meta-Titel",
       "labelMetaDescription": "Meta-Beschreibung",
       "labelKeywords": "Schlüsselwörter",
+      "labelCanonicalUrlMode": "Verwende dieselbe Canonical-URL für alle Varianten.",
       "placeholderMetaTitle": "Gib einen Meta-Titel ein ...",
+      "labelCanonicalProduct": "Variante für Canonical-URL",
       "placeholderMetaDescription": "Gib eine Meta-Beschreibung ein ...",
-      "placeholderKeywords": "Gib ein oder mehrere Schlüsselwörter ein ..."
+      "placeholderKeywords": "Gib ein oder mehrere Schlüsselwörter ein ...",
+      "placeholderCanonicalProduct": "Wähle eine Variante aus ..."
     },
     "settingsForm": {
       "labelCreatedAt": "Erstelldatum",
@@ -162,6 +165,7 @@
       "columnPrice": "Preis (brutto / netto)",
       "contextMenuDuplicate": "Duplizieren",
       "contextMenuDelete": "Löschen",
+      "settingShowListPrices": "Zeige Streichpreise",
       "toolbarLabel": "Regeln"
     },
     "list": {
@@ -182,6 +186,21 @@
       "contextMenuEdit": "Bearbeiten",
       "contextMenuDelete": "Löschen",
       "contextMenuDuplicate": "Duplizieren",
+      "contextMenuShowVariants": "Varianten anzeigen",
+      "variantIndicatorTooltip": "Dieses Produkt hat Varianten.",
+      "variantModalTitle": "Varianten von \"{productName}\"",
+      "openMainProduct": "\"{productName}\" öffnen",
+      "variantModalInlineEditProductNamePlaceholder": "Vergib einen Variantennamen ...",
+      "variantModalInlineEditStockPlaceholder": "Lagerbestand eingeben ...",
+      "variantGridEmptyStateSubline": "Es wurden keine Varianten gefunden.",
+      "multipleVariantsDeleteModalText": "Bist du dir sicher, dass du {amount} Varianten löschen willst?",
+      "multipleVariantsDeleteModalSubline": "Dies kann eine kurze Zeit dauern.",
+      "notificationVariantDeleteSuccess": "\"{variantName}\" wurde erfolgreich gelöscht. | Erfolgreich {amount} Varianten gelöscht.",
+      "notificationVariantDeleteError": "Beim löschen von \"{variantName}\" ist etwas schiefgelaufen. | Beim löschen mehrerer Varianten ist etwas schiefgelaufen.",
+      "notificationVariantDeleteErrorCanonicalUrl": "\"{variantName}\" kann nicht gelöscht werden, weil es als Canonical-URL-Template verwendet wird. | Varianten konnten nicht gelöscht werden, da eine Variante als Canonical-URl-Template verwendet wird.",
+      "notificationVariantSaveSuccess": "\"{variantName}\" wurde erfolgreich gespeichert.",
+      "variantDeleteModalTitle": "Variante löschen",
+      "variantDeleteModalText": "Bist du dir sicher ob du die Variante \"{variantName}\" löschen willst?",
       "messageEmpty": "Noch keine Produkte",
       "textDeleteConfirm": "Möchtest Du das Produkt \"{name}\" wirklich löschen? | Möchtest Du diese {count} Produkte wirklich löschen?",
       "titleSidebarItemRefresh": "Aktualisieren",
@@ -197,6 +216,7 @@
       "tabAdvancedPrices": "Erweiterte Preise",
       "tabProperties": "Eigenschaften zuweisen",
       "tabVariation": "Varianten",
+      "tabLayout": "Layout",
       "tabCrossSelling": "Cross Selling",
       "messageSaveSuccess": "Das Produkt \"{name}\" wurde erfolgreich gespeichert.",
       "messageUploadSuccess": "{count} von {total} Dateien erfolgreich gespeichert.",
@@ -215,12 +235,15 @@
       "advancedPricesNotExisting": "Für dieses Produkt existieren noch keine erweiterten Preise.",
       "columnFrom": "Menge von ...",
       "columnTo": "bis ...",
+      "columnType": "Typ",
       "selectRule": "Bedingungsregel auswählen ...",
       "advancedPricesInherited": "Dieses Produkt hat vererbte Preise vom Hauptprodukt.",
       "linkAdvancedPricesOfParent": "Zeige die Preise des Hauptprodukts",
       "inheritSwitchLabel": "Nutze die erweiterten Preise des Hauptprodukts",
-      "advancedPricesNotInherited": "Du kannst jetzt benutzerdefinierte Preisregeln für diese Variante verwenden."
-
+      "advancedPricesNotInherited": "Du kannst jetzt benutzerdefinierte Preisregeln für diese Variante verwenden.",
+      "advancedListPricePriceLabel": "Preis",
+      "advancedListPriceLabel": "Streichpreis",
+      "advancedPriceDisabledTooltip": "Der Start-Wert bei der ersten Preisstaffel muss den Wert 1 haben."
     },
     "properties": {
       "cardTitleProperties": "Eigenschaften",
@@ -266,6 +289,7 @@
       "generatedListDeleteModalButtonDelete": "Löschen",
       "generatedListMessageSaveSuccess": "Die Variante wurde gespeichert.",
       "generatedListMessageSaveError": "Die Variante konnte nicht gespeichert werden.",
+      "generatedListMessageDeleteErrorCanonicalUrl": "Die Variante konnte nicht gelöscht werden da sie als Canonical-URL Template dient.",
       "generatedListMessageDeleteSuccess": "Die Variante wurde gelöscht.",
       "overview": {
         "filterReset": "Zurücksetzen",
@@ -313,6 +337,10 @@
         "save": "Speichern"
       }
     },
+    "layout": {
+      "title": "Layout-Zuweisung",
+      "subtitle": "Du kannst die Anzeige der Produkt-Detailseite mit eigenen Layouts anpassen.  Wenn Du kein eigenes Layout zuweisen möchtest, wird das Standard-Layout für Produkt-Detailseiten verwendet."
+    },
     "crossselling": {
       "cardTitleCrossSelling": "Cross Selling",
       "buttonAddCrossSelling": "Neues Cross Selling hinzufügen",
@@ -353,6 +381,14 @@
       "linkFeatureSetsConfig": "Wesentliche Merkmale",
       "templateSelectFieldLabel": "Vorlagen",
       "templateSelectFieldPlaceholder": "Wähle eine Vorlage aus..."
+    },
+    "layoutAssignment": {
+      "title": "Standard fallback",
+      "subtitle": "Produktseite",
+      "textAssignLayout": "Layout zuweisen",
+      "textChangeLayout": "Layout ändern",
+      "textCreateNewLayout": "Neues Layout erstellen",
+      "textEditInDesigner": "Im Designer bearbeiten"
     }
   },
   "sw-privileges": {

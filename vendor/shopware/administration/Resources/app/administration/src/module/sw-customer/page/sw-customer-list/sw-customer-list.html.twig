@@ -55,15 +55,21 @@
                             ref="swCustomerGrid"
                             v-if="customers"
                             class="sw-customer-list-grid"
+                            identifier="sw-customer-list"
                             :items="customers"
                             :columns="customerColumns"
                             :repository="customerRepository"
+                            :sortBy="sortBy"
+                            :sortDirection="sortDirection"
                             detailRoute="sw.customer.detail"
                             :showSelection="acl.can('customer.deleter')"
                             :allowInlineEdit="acl.can('customer.editor')"
                             :isLoading="isLoading"
-                            identifier="sw-customer-list"
-                            @inline-edit-save="onInlineEditSave">
+                            :disableDataFetching="true"
+                            @selection-change="updateSelection"
+                            @inline-edit-save="onInlineEditSave"
+                            @page-change="onPageChange"
+                            @column-sort="onSortColumn">
 
                             {% block sw_customer_list_grid_columns %}
 
@@ -101,7 +107,7 @@
 
                                         {% block sw_customer_list_grid_columns_name_link %}
                                             <router-link v-else :to="{ name: 'sw.customer.detail', params: { id: item.id } }">
-                                                {{ item.firstName }} {{ item.lastName }}
+                                                {{ item.lastName }}, {{ item.firstName }}
                                             </router-link>
                                         {% endblock %}
 
@@ -125,7 +131,7 @@
                             {% endblock %}
 
                             {% block sw_customer_list_grid_columns_boundSalesChannel %}
-                                <template v-if="feature.isActive('FEATURE_NEXT_10555')" #column-boundSalesChannelId="{ item }">
+                                <template #column-boundSalesChannelId="{ item }">
                                     {{ item.boundSalesChannelId ? item.salesChannel.translated.name : $tc('sw-customer.list.emptyBoundSalesChannel') }}
                                 </template>
                             {% endblock %}

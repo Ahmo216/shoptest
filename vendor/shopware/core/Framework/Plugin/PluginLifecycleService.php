@@ -2,7 +2,6 @@
 
 namespace Shopware\Core\Framework\Plugin;
 
-use Composer\Composer;
 use Psr\Cache\CacheItemPoolInterface;
 use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Api\Context\SystemSource;
@@ -33,6 +32,7 @@ use Shopware\Core\Framework\Plugin\Event\PluginPreInstallEvent;
 use Shopware\Core\Framework\Plugin\Event\PluginPreUninstallEvent;
 use Shopware\Core\Framework\Plugin\Event\PluginPreUpdateEvent;
 use Shopware\Core\Framework\Plugin\Exception\PluginBaseClassNotFoundException;
+use Shopware\Core\Framework\Plugin\Exception\PluginComposerJsonInvalidException;
 use Shopware\Core\Framework\Plugin\Exception\PluginHasActiveDependantsException;
 use Shopware\Core\Framework\Plugin\Exception\PluginNotActivatedException;
 use Shopware\Core\Framework\Plugin\Exception\PluginNotInstalledException;
@@ -47,6 +47,9 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\EventListener\StopWorkerOnRestartSignalListener;
 
+/**
+ * @internal
+ */
 class PluginLifecycleService
 {
     /**
@@ -150,9 +153,16 @@ class PluginLifecycleService
             return $installContext;
         }
 
-        // TODO NEXT-1797: Not usable with Composer 1.8, Wait for Release of Composer 2.0
-        if (Feature::isActive('FEATURE_NEXT_1797') && version_compare(Composer::getVersion(), '2', 'ge')) {
-            $this->executor->require($plugin->getComposerName());
+        if (Feature::isActive('FEATURE_NEXT_1797') && $pluginBaseClass->executeComposerCommands()) {
+            $pluginComposerName = $plugin->getComposerName();
+            if ($pluginComposerName === null) {
+                throw new PluginComposerJsonInvalidException(
+                    $pluginBaseClass->getPath() . '/composer.json',
+                    ['No name defined in composer.json']
+                );
+            }
+
+            $this->executor->require($pluginComposerName, $plugin->getName());
         } else {
             $this->requirementValidator->validateRequirements($plugin, $shopwareContext, 'install');
         }
@@ -211,6 +221,17 @@ class PluginLifecycleService
         $pluginBaseClassString = $plugin->getBaseClass();
         $pluginBaseClass = $this->getPluginBaseClass($pluginBaseClassString);
 
+        if (Feature::isActive('FEATURE_NEXT_1797') && $pluginBaseClass->executeComposerCommands()) {
+            $pluginComposerName = $plugin->getComposerName();
+            if ($pluginComposerName === null) {
+                throw new PluginComposerJsonInvalidException(
+                    $pluginBaseClass->getPath() . '/composer.json',
+                    ['No name defined in composer.json']
+                );
+            }
+            $this->executor->remove($pluginComposerName, $plugin->getName());
+        }
+
         $uninstallContext = new UninstallContext(
             $pluginBaseClass,
             $shopwareContext,
@@ -230,6 +251,10 @@ class PluginLifecycleService
 
         if (!$uninstallContext->keepMigrations()) {
             $pluginBaseClass->removeMigrations();
+        }
+
+        if (!$uninstallContext->keepUserData()) {
+            $this->systemConfigService->deletePluginConfiguration($pluginBaseClass);
         }
 
         $this->updatePluginData(
@@ -269,9 +294,15 @@ class PluginLifecycleService
             $plugin->getUpgradeVersion() ?? $plugin->getVersion()
         );
 
-        // TODO NEXT-1797: Not usable with Composer 1.8, Wait for Release of Composer 2.0
-        if (Feature::isActive('FEATURE_NEXT_1797') && version_compare(Composer::getVersion(), '2', 'ge')) {
-            $this->executor->require($plugin->getComposerName());
+        if (Feature::isActive('FEATURE_NEXT_1797') && $pluginBaseClass->executeComposerCommands()) {
+            $pluginComposerName = $plugin->getComposerName();
+            if ($pluginComposerName === null) {
+                throw new PluginComposerJsonInvalidException(
+                    $pluginBaseClass->getPath() . '/composer.json',
+                    ['No name defined in composer.json']
+                );
+            }
+            $this->executor->require($pluginComposerName, $plugin->getName());
         } else {
             $this->requirementValidator->validateRequirements($plugin, $shopwareContext, 'update');
         }
@@ -413,7 +444,7 @@ class PluginLifecycleService
             $this->getEntities($this->pluginCollection->all(), $shopwareContext)->getElements()
         );
 
-        if (count($dependants) > 0) {
+        if (\count($dependants) > 0) {
             throw new PluginHasActiveDependantsException($plugin->getName(), $dependants);
         }
 
@@ -523,6 +554,11 @@ class PluginLifecycleService
         /** @var Kernel $kernel */
         $kernel = $this->container->get('kernel');
 
+        $pluginDir = $kernel->getContainer()->getParameter('kernel.plugin_dir');
+        if (!\is_string($pluginDir)) {
+            throw new \RuntimeException('Container parameter "kernel.plugin_dir" needs to be a string');
+        }
+
         /** @var KernelPluginLoader $pluginLoader */
         $pluginLoader = $this->container->get(KernelPluginLoader::class);
 
@@ -538,11 +574,7 @@ class PluginLifecycleService
          *
          * All other Requests wont have this plugin active until its updated in the db
          */
-        $tmpStaticPluginLoader = new StaticKernelPluginLoader(
-            $pluginLoader->getClassLoader(),
-            $kernel->getContainer()->getParameter('kernel.plugin_dir'),
-            $plugins
-        );
+        $tmpStaticPluginLoader = new StaticKernelPluginLoader($pluginLoader->getClassLoader(), $pluginDir, $plugins);
         $kernel->reboot(null, $tmpStaticPluginLoader);
 
         // If symfony throws an exception when calling getContainer on an not booted kernel and catch it here

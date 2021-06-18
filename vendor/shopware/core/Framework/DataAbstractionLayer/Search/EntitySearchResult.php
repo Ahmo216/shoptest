@@ -33,18 +33,32 @@ class EntitySearchResult extends EntityCollection
      */
     protected $context;
 
+    /**
+     * @var int
+     */
+    protected $page;
+
+    /**
+     * @var int|null
+     */
+    protected $limit;
+
     final public function __construct(
         int $total,
         EntityCollection $entities,
         ?AggregationResultCollection $aggregations,
         Criteria $criteria,
-        Context $context
+        Context $context,
+        int $page = 1,
+        ?int $limit = null
     ) {
         $this->entities = $entities;
         $this->total = $total;
         $this->aggregations = $aggregations ?? new AggregationResultCollection();
         $this->criteria = $criteria;
         $this->context = $context;
+        $this->page = $page;
+        $this->limit = $limit;
 
         parent::__construct($entities);
     }
@@ -116,6 +130,26 @@ class EntitySearchResult extends EntityCollection
         return 'dal_entity_search_result';
     }
 
+    public function getPage(): ?int
+    {
+        return $this->page;
+    }
+
+    public function setPage(int $page): void
+    {
+        $this->page = $page;
+    }
+
+    public function getLimit(): ?int
+    {
+        return $this->limit;
+    }
+
+    public function setLimit(int $limit): void
+    {
+        $this->limit = $limit;
+    }
+
     protected function createNew(iterable $elements = [])
     {
         return new static(
@@ -123,7 +157,9 @@ class EntitySearchResult extends EntityCollection
             $elements,
             $this->aggregations,
             $this->criteria,
-            $this->context
+            $this->context,
+            $this->page,
+            $this->limit
         );
     }
 }

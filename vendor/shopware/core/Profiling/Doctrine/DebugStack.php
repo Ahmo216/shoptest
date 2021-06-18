@@ -30,7 +30,7 @@ class DebugStack extends DoctrineDebugStack
         $stack = debug_backtrace();
 
         $stack = array_map(function ($caller) {
-            if (!is_array($caller)) {
+            if (!\is_array($caller)) {
                 return null;
             }
             if (!isset($caller['class']) || !isset($caller['function']) || !isset($caller['line'])) {
@@ -61,7 +61,7 @@ class DebugStack extends DoctrineDebugStack
                 );
             }
 
-            // will throw an exception with 6.3.0
+            /* @deprecated tag:v6.4.0 - Will throw an exception  */
             @trigger_error('Write operations are not supported when using executeQuery.', E_USER_DEPRECATED);
         }
     }

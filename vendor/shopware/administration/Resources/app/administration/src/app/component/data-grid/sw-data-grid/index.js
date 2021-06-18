@@ -291,7 +291,9 @@ Component.register('sw-data-grid', {
                 const storageItem = window.localStorage.getItem(this.localStorageItemKey);
 
                 if (storageItem !== null) {
-                    columns = JSON.parse(storageItem).columns;
+                    const parsedStorageItem = JSON.parse(storageItem);
+
+                    columns = parsedStorageItem.columns || parsedStorageItem;
                 }
             }
 
@@ -408,18 +410,20 @@ Component.register('sw-data-grid', {
 
         onChangeColumnVisibility(value, index) {
             this.currentColumns[index].visible = value;
-            this.saveUserSettings();
 
             // @deprecated tag:v6.4.0 - use saveUserSettings instead
             this.saveGridColumns();
+
+            this.saveUserSettings();
         },
 
         onChangeColumnOrder(currentColumnIndex, newColumnIndex) {
             this.currentColumns = this.orderColumns(this.currentColumns, currentColumnIndex, newColumnIndex);
-            this.saveUserSettings();
 
             // @deprecated tag:v6.4.0 - use saveUserSettings instead
             this.saveGridColumns();
+
+            this.saveUserSettings();
         },
 
         orderColumns(columns, oldColumnIndex, newColumnIndex) {
@@ -450,10 +454,11 @@ Component.register('sw-data-grid', {
 
         hideColumn(columnIndex) {
             this.currentColumns[columnIndex].visible = false;
-            this.saveUserSettings();
 
             // @deprecated tag:v6.4.0 - use saveUserSettings instead
             this.saveGridColumns();
+
+            this.saveUserSettings();
         },
 
         renderColumn(item, column) {

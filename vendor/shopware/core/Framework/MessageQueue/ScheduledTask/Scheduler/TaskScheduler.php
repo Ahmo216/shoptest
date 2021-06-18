@@ -41,7 +41,7 @@ class TaskScheduler
         $criteria = $this->buildCriteriaForAllScheduledTask();
         $tasks = $this->scheduledTaskRepository->search($criteria, Context::createDefaultContext())->getEntities();
 
-        if (count($tasks) === 0) {
+        if (\count($tasks) === 0) {
             return;
         }
 
@@ -109,7 +109,7 @@ class TaskScheduler
             new RangeFilter(
                 'nextExecutionTime',
                 [
-                    RangeFilter::LT => (new \DateTime())->format(DATE_ATOM),
+                    RangeFilter::LT => (new \DateTime())->format(\DATE_ATOM),
                 ]
             ),
             new EqualsFilter('status', ScheduledTaskDefinition::STATUS_SCHEDULED)
@@ -121,8 +121,9 @@ class TaskScheduler
     private function queueTask(ScheduledTaskEntity $taskEntity): void
     {
         $taskClass = $taskEntity->getScheduledTaskClass();
+        $taskClassParents = class_parents($taskClass);
 
-        if (!\in_array(ScheduledTask::class, class_parents($taskClass), true)) {
+        if ($taskClassParents === false || !\in_array(ScheduledTask::class, $taskClassParents, true)) {
             throw new \RuntimeException(sprintf(
                 'Tried to schedule "%s", but class does not extend ScheduledTask',
                 $taskClass

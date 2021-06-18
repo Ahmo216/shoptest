@@ -86,19 +86,25 @@
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="Shopware\Core\Checkout\Customer\SalesChannel\LogoutRoute"/>
         </service>
 
         <service id="Shopware\Storefront\Controller\CookieController">
             <argument type="service" id="Shopware\Storefront\Framework\Cookie\CookieProviderInterface"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
         </service>
 
         <service id="Shopware\Storefront\Controller\CmsController">
             <argument type="service" id="Shopware\Core\Content\Cms\SalesChannel\CmsRoute"/>
             <argument type="service" id="Shopware\Core\Content\Category\SalesChannel\CategoryRoute"/>
+            <argument type="service" id="Shopware\Core\Content\Product\SalesChannel\Listing\ProductListingRoute"/>
+            <argument type="service" id="Shopware\Core\Content\Product\SalesChannel\Detail\ProductDetailRoute"/>
+            <argument type="service" id="Shopware\Storefront\Page\Product\Review\ProductReviewLoader"/>
+            <argument type="service" id="Shopware\Storefront\Page\Product\Configurator\ProductCombinationFinder"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>
-            <argument type="service" id="Shopware\Core\Content\Product\SalesChannel\Listing\ProductListingRoute"/>
         </service>
 
         <service id="Shopware\Storefront\Controller\FormController">
@@ -237,12 +243,32 @@
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>
-            <tag name="shopware.feature" flag="FEATURE_NEXT_10537"/>
         </service>
 
         <service id="Shopware\Storefront\Controller\StoreApiProxyController" public="true">
             <argument type="service" id="Symfony\Component\HttpKernel\KernelInterface"/>
             <argument type="service" id="Symfony\Component\HttpFoundation\RequestStack"/>
+        </service>
+
+        <service id="Shopware\Storefront\Controller\WishlistController" public="true">
+            <argument type="service" id="Shopware\Storefront\Page\Wishlist\WishlistPageLoader"/>
+            <argument type="service" id="Shopware\Core\Checkout\Customer\SalesChannel\LoadWishlistRoute"/>
+            <argument type="service" id="Shopware\Core\Checkout\Customer\SalesChannel\AddWishlistProductRoute"/>
+            <argument type="service" id="Shopware\Core\Checkout\Customer\SalesChannel\RemoveWishlistProductRoute"/>
+            <argument type="service" id="Shopware\Core\Checkout\Customer\SalesChannel\MergeWishlistProductRoute"/>
+            <argument type="service" id="Shopware\Storefront\Page\Wishlist\GuestWishlistPageLoader"/>
+            <argument type="service" id="Shopware\Storefront\Pagelet\Wishlist\GuestWishlistPageletLoader"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+        </service>
+
+
+        <service id="Shopware\Storefront\Controller\VerificationHashController" public="true">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
         </service>
     </services>
 </container>

@@ -12,9 +12,9 @@ use Shopware\Core\Checkout\Customer\Exception\NoHashProvidedException;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
-use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\Framework\Validation\DataValidationDefinition;
 use Shopware\Core\Framework\Validation\DataValidator;
@@ -68,9 +68,10 @@ class RegisterConfirmRoute extends AbstractRegisterConfirmRoute
     }
 
     /**
+     * @Since("6.2.0.0")
      * @OA\Post(
      *      path="/account/register-confirm",
-     *      description="Confirm double optin registration",
+     *      summary="Confirm double optin registration",
      *      operationId="registerConfirm",
      *      tags={"Store API", "Account"},
      *      @OA\Parameter(name="hash", description="Hash from Link in Mail", in="query", @OA\Schema(type="string")),
@@ -139,7 +140,8 @@ class RegisterConfirmRoute extends AbstractRegisterConfirmRoute
                 'billingAddressId' => null,
                 'shippingAddressId' => null,
             ],
-            Feature::isActive('FEATURE_NEXT_10058') ? $customer->getId() : null
+            $context->getSalesChannel()->getId(),
+            $customer->getId()
         );
 
         $event = new CustomerLoginEvent($context, $customer, $newToken);

@@ -1,10 +1,12 @@
 import template from './sw-cms-create-wizard.html.twig';
 import './sw-cms-create-wizard.scss';
 
-const { Component } = Shopware;
+const { Component, Filter } = Shopware;
 
 Component.register('sw-cms-create-wizard', {
     template,
+
+    inject: ['feature'],
 
     props: {
         page: {
@@ -14,22 +16,27 @@ Component.register('sw-cms-create-wizard', {
     },
 
     data() {
+        const pageTypeNames = {
+            page: this.$tc('sw-cms.detail.label.pageTypeShopPage'),
+            landingpage: this.$tc('sw-cms.detail.label.pageTypeLandingpage'),
+            product_list: this.$tc('sw-cms.detail.label.pageTypeCategory')
+        };
+
+        const pageTypeIcons = {
+            page: 'default-object-lightbulb',
+            landingpage: 'default-web-dashboard',
+            product_list: 'default-shopping-basket'
+        };
+
+        if (this.feature.isActive('FEATURE_NEXT_10078')) {
+            pageTypeNames.product_detail = this.$tc('sw-cms.detail.label.pageTypeProduct');
+            pageTypeIcons.product_detail = 'default-action-tags';
+        }
+
         return {
             step: 1,
-            pageTypeNames: {
-                page: this.$tc('sw-cms.detail.label.pageTypeShopPage'),
-                landingpage: this.$tc('sw-cms.detail.label.pageTypeLandingpage'),
-                product_list: this.$tc('sw-cms.detail.label.pageTypeCategory')
-                // Will be implemented in the future
-                // product_detail: this.$tc('sw-cms.detail.label.pageTypeProduct')
-            },
-            pageTypeIcons: {
-                page: 'default-object-lightbulb',
-                landingpage: 'default-web-dashboard',
-                product_list: 'default-shopping-basket'
-                // Will be implemented in the future
-                // product_detail: 'default-action-tags'
-            },
+            pageTypeNames,
+            pageTypeIcons,
             steps: {
                 pageType: 1,
                 sectionType: 2,
@@ -44,10 +51,9 @@ Component.register('sw-cms-create-wizard', {
                 return '';
             }
 
-            const context = Shopware.Context.api;
             const imgPath = 'administration/static/img/cms';
 
-            return `url(${context.assetsPath}/${imgPath}/preview_${this.page.type}_${this.page.sections[0].type}.png)`;
+            return `url(${this.assetFilter(`${imgPath}/preview_${this.page.type}_${this.page.sections[0].type}.png`)})`;
         },
 
         pagePreviewStyle() {
@@ -55,6 +61,10 @@ Component.register('sw-cms-create-wizard', {
                 'background-image': this.pagePreviewMedia,
                 'background-size': 'cover'
             };
+        },
+
+        assetFilter() {
+            return Filter.getByName('asset');
         }
     },
 

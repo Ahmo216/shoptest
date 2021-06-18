@@ -144,6 +144,24 @@ class AccountRegistrationServiceTest extends TestCase
         static::assertNotEmpty($customerId);
     }
 
+    public function testRegistrationWithBusinessAccountAndVatIdRequired(): void
+    {
+        $this->systemConfigService->set('core.loginRegistration.showAccountTypeSelection', true);
+
+        $guestData = $this->getRegistrationData();
+        $guestData->set('accountType', CustomerEntity::ACCOUNT_TYPE_BUSINESS);
+
+        /** @var DataBag $guestBillingAddress */
+        $guestBillingAddress = $guestData->get('billingAddress');
+        $guestBillingAddress->set('company', 'shopware');
+        $guestData->set('vatIds', []);
+
+        $this->systemConfigService->set('core.loginRegistration.vatIdFieldRequired', true);
+
+        $this->expectException(ConstraintViolationException::class);
+        $this->accountRegistrationService->register($guestData, true, $this->salesChannelContext);
+    }
+
     public function testRegistrationWithRequiredPhoneNumber(): void
     {
         $this->systemConfigService->set('core.loginRegistration.showPhoneNumber', true);

@@ -7,6 +7,7 @@
       "greeting": "Layouts",
       "createNewLayout": "Neues Layout anlegen",
       "deleteDisabledToolTip": "Das Layout ist noch mindestens einer Kategorie zugewiesen.",
+      "deleteDisabledProductToolTip": "Das Layout ist noch mindestens einem Produkt zugewiesen.",
       "disabledAddingBlocksToolTip": "Blöcke können nur in der System-Standardsprache hinzugefügt werden.",
       "buttonDelete": "Löschen"
     },
@@ -26,6 +27,7 @@
       "gridHeaderName": "Name",
       "gridHeaderType": "Typ",
       "gridHeaderAssignment": "Zugewiesene Kategorien",
+      "gridHeaderAssignments": "Zuordnungen",
       "gridHeaderCreated": "Erstellt"
     },
     "section": {
@@ -47,6 +49,11 @@
         "settings": "Einstellungen",
         "layoutSettings": "Layout",
         "duplicate": "Duplizieren"
+      },
+      "layoutAssignment": {
+        "headline": "Verwalte wo dieses Layout zu sehen ist",
+        "infoText": "Du kannst Layouts für unterschiedliche Kategorien in Deinem Shop verwenden. Hier kannst Du einsehen, in welchen Kategorien dieses Layout bereits eingesetzt wird, oder es anderen Kategorien zuweisen.",
+        "actionAssignLayout": "Layout zuweisen"
       }
     },
     "createWizard": {
@@ -124,7 +131,8 @@
         "messageMissingProductListing": "Speichern nicht möglich. Bitte füge mindestens einen Produktlisting-Block hinzu oder ändere den Typ dieses Layouts.",
         "messageMissingSections": "Du kannst leere Seiten nicht speichern. Bitte füge zuerst eine Sektion hinzu.",
         "messageMissingBlocks": "Du kannst keine leere Seite speichern. Bitte füge zuerst einige Blöcke hinzu.",
-        "messageMissingElements": "Konfiguration erforderlich. Bitte konfiguriere alle Elemente Deines Layouts."
+        "messageMissingElements": "Konfiguration erforderlich. Bitte konfiguriere alle Elemente Deines Layouts.",
+        "messageRedundantElements": "Layouts dürfen nur ein {name}-Element enthalten."
       },
       "placeholder": {
         "demoEntity": "Wähle einen Datensatz zur Vorschau ..."
@@ -137,6 +145,7 @@
         "headerBlockSettings": "Block:",
         "titleNavigator": "Navigator",
         "titleSectionSettings": "Sektion-Einstellungen",
+        "titleLayoutAssignment": "Layout-Zuweisung",
         "mobile": "Mobiles Sidebar-Verhalten",
         "mobileOptionHidden": "Nicht angezeigt",
         "mobileOptionWrap": "Umbrechen"
@@ -147,7 +156,8 @@
       },
       "tooltip": {
         "blockNameField": "Benenne jeden Block individuell und eindeutig, um einen guten Überblick über Deine Arbeit zu behalten.",
-        "sectionNameField": "Benenne jede Sektion individuell und eindeutig, um einen guten Überblick über Deine Arbeit zu erhalten."
+        "sectionNameField": "Benenne jede Sektion individuell und eindeutig, um einen guten Überblick über Deine Arbeit zu erhalten.",
+        "cannotSelectProductPageLayout": "Du kannst ein Layout vom Typ Produktseite nicht in einen anderen Layout-Typ ändern."
       }
     },
     "elements": {
@@ -155,6 +165,7 @@
         "config": {
           "label": {
             "verticalAlign": "Vertikale Ausrichtung",
+            "alignment": "Ausrichtung",
             "verticalAlignTop": "Oben",
             "verticalAlignCenter": "Mitte",
             "verticalAlignBottom": "Unten",
@@ -169,7 +180,8 @@
           },
           "tab": {
             "content": "Inhalt",
-            "settings": "Einstellungen"
+            "settings": "Einstellungen",
+            "options": "Optionen"
           },
           "infoText": {
             "listingElement": "Die Produktdaten für dieses Element werden automatisiert über die Kategoriezuweisung befüllt. Der Inhalt zeigt nur eine ungefähre Vorschau."
@@ -241,7 +253,8 @@
         "label": "Produkt-Listing",
         "config": {
           "tab": {
-            "sorting": "Sortierungen"
+            "sorting": "Sortierungen",
+            "filter": "Filter"
           },
           "sorting": {
             "labelShowSorting": "Produkt-Sortierung anzeigen",
@@ -260,6 +273,20 @@
             },
             "defaultSortingInUse": "Diese Produkt-Sortierung ist bereits als Standardsortierung ausgewählt.",
             "defaultSortingCantBeDisabled": "Diese Product-Sortierung ist die Standardsortierung. Sie muss aktiviert bleiben, um keine Probleme mit Deinen Produkt-Listings zu verursachen."
+          },
+          "filter": {
+            "infoText": "Stelle sicher, dass ein Filter Block zu Deinem Layout hinzugefügt ist, um diese Einstellung in Aktion zu sehen.",
+            "labelFilterByManufacturer": "Nach Hersteller filtern",
+            "labelFilterByRating": "Nach Bewertung filtern",
+            "labelFilterByPrice": "Nach Preis filtern",
+            "labelFilterForFreeShipping": "Nach kostenlosem Versand filtern",
+            "labelUseFilterByProperties": "Filterbare Produkteigenschaften konfigurieren",
+            "helpTextUseFilterByProperties": "Wenn deaktiviert, werden in diesem Layout Filter für alle vorhandenen Eigenschaften angezeigt.",
+            "descriptionTextUseFilterByProperties": "Eigenschaften, die auf nicht filterbar eingestellt sind, werden hier nicht angezeigt. Du kannst dies im <a href=\"#/sw/property/index\" target=\"_blank\">Eigenschaftsmodul</a> ändern.",
+            "gridHeaderStatus": "Status",
+            "gridHeaderName": "Name",
+            "gridEmptyStateLabel": "Keine Eigenschaften gefunden.",
+            "gridEmptyStateHint": "Versuche es mit einem anderen Suchbegriff"
           }
         }
       },
@@ -321,7 +348,7 @@
       "sidebarFilter": {
         "label": "Produkt-Filter",
         "infoText": {
-          "filterElement": "Die Filterdaten für dieses Element werden automatisiert befüllt. Der Inhalt zeigt nur eine ungefähre Vorschau."
+          "filterElement": "Die angezeigten Filter können über das Listingelement konfiguriert werden."
         }
       },
       "text": {
@@ -412,10 +439,76 @@
             "send": "Senden"
           }
         }
+      },
+      "buyBox": {
+        "label": "Buybox",
+        "infoText": {
+          "tooltipSettingDisabled" : "Die Produktdaten dieses Elements werden automatisch aus dem mit dem Layout verbundenen Produkt geladen. Der angezeigte Inhalt ist nur eine Beispielvorschau."
+        },
+        "config": {
+          "label": {
+            "selection": "Produkt"
+          },
+          "placeholder": {
+            "selection": "Wähle ein Produkt ..."
+          }
+        },
+        "component": {
+          "label": {
+            "actionBuy": "In den Warenkorb",
+            "taxInfo": "Preise inkl. MwSt. zzgl. Versandkosten",
+            "deliveryShippingFree": "Versandkostenfrei",
+            "deliveryTime": "Sofort verfügbar, Lieferzeit {name}",
+            "variants": "Variants",
+            "productNumber": "Produktnummer:"
+          }
+        }
+      },
+      "productDescriptionReviews": {
+        "label": "Produktbeschreibung und -bewertungen",
+        "infoText": {
+          "descriptionAndReviewsElement": "Die Produktdaten dieses Elements werden automatisch aus dem mit dem Layout verbundenen Produkt geladen. Der angezeigte Inhalt ist nur eine Beispielvorschau."
+        },
+        "component": {
+          "label": {
+            "descriptionAndReviews": "Produktbeschreibung und -bewertungen"
+          }
+        },
+        "preview": {
+          "label": {
+            "descriptionAndReviews": "Produktbeschreibung und -bewertungen",
+            "description": "Beschreibung",
+            "reviews": "Bewertungen"
+          }
+        }
+      },
+      "crossSelling": {
+        "label": "Cross Selling",
+        "preview": {
+          "label": {
+            "crossSellingTitle": "Cross-Selling-Titel"
+          }
+        },
+        "config": {
+          "label": {
+            "selection": "Produkt",
+            "minWidth": "Mindestbreite"
+          },
+          "placeholder": {
+            "selection": "Produkt auswählen ...",
+            "minWidth": "Mindestbreite eingeben ..."
+          },
+          "infoText": {
+            "productDetailElement": "Die Produktdaten dieses Elements werden automatisch aus dem mit dem Layout verbundenen Produkt geladen. Der angezeigte Inhalt ist nur eine Beispielvorschau."
+          }
+        }
       }
     },
     "blocks": {
       "commerce": {
+        "productHeading": {
+          "label": "Produktname & Hersteller-Logo"
+        },
         "productListing": {
           "label": "Produkt-Listing"
         },
@@ -424,6 +517,21 @@
         },
         "productThreeColumn": {
           "label": "Drei Spalten, Produkt-Boxen"
+        },
+        "productDescriptionReviews": {
+          "label": "Produktbeschreibung und -bewertungen",
+          "preview": {
+            "label": {
+              "description": "Beschreibung",
+              "reviews": "Bewertungen"
+            }
+          }
+        },
+        "galleryBuyBox": {
+          "label": "Galerie und Buybox"
+        },
+        "crossSelling": {
+          "label": "Cross Selling"
         }
       },
       "image": {
@@ -537,6 +645,48 @@
         "actionConfirm": "Layout übernehmen",
         "modalTitle": "Layout auswählen",
         "headline": "Landingpage / Produktlisting"
+      },
+      "cmsLayoutAssignmentModal": {
+        "infoText": "Das Layout ist erst in Deinem Shop zu sehen, wenn Du es einer aktiven Kategorie zugewiesen hast.",
+        "infoTextShopPages": "Du kannst dieses Layout sowohl für Kategorien verwenden als auch für Shopseiten wie AGB, Impressum, Fehlerseiten etc.",
+        "labelCategories": "Kategorien",
+        "placeholderCategories": "Wähle Kategorien aus...",
+        "labelSalesChannel": "Verkaufskanal",
+        "placeholderSalesChannel": "Wähle einen Verkaufskanal...",
+        "resetOptionSalesChannel": "Alle Verkaufskanäle",
+        "helpTextSalesChannel": "Layouts, die spezifischen Verkaufskanälen zugewiesen sind, überschreiben Layout-Zuweisungen in \"Alle Verkaufskanäle\".",
+        "labelShopPages": "Shopseiten",
+        "confirmChanges": "Übernehmen",
+        "confirmChangesConfirm": "Übernehmen",
+        "confirmChangesRestorePrev": "Verwerfen",
+        "confirmChangesTextCategories": "Du hast Layout-Zuweisungen von Kategorie entfernt. Wenn Du diese Änderungen bestätigst, ist für diese Kategorien kein Layout mehr zugewiesen.",
+        "confirmChangesTextCategoriesAssignedLayouts": "Einigen der ausgewählten Kategorien ist bereits ein Layout zugewiesen. Wenn Du fortfährst, werden die bestehenden Zuweisungen durch das aktuelle Layout ersetzt.",
+        "confirmChangesTextShopPages": "Du hast Layout-Zuweisungen von Shopseiten entfernt. Wenn Du diese Änderungen bestätigst, ist für diese Shopseiten kein Layout mehr zugewiesen.",
+        "confirmChangesTextGeneral": "Wähle \"Übernehmen\", wenn Du die bisherigen Layout-Zuweisungen überschreiben möchtest.<br>Wähle \"Verwerfen\", wenn Du die vorherigen Layout-Zuweisungen wiederherstellen möchtest.<br>Wähle \"Abbrechen\", wenn Du die Layout-Zuweisungen weiter bearbeiten möchtest.",
+        "confirmChangesText": "Möchtest Du Deine Änderungen übernehmen?",
+        "confirmChangesTitle": "Layout-Zuweisung bestätigen",
+        "shopPagesLoadError": "Shopseiten konnten nicht geladen werden",
+        "shopPagesSaveError": "Shopseiten konnten nicht gespeichert werden",
+        "tabCategories": "Kategorien",
+        "tabShopPages": "Shopseiten",
+        "shopPages": {
+          "tosPage": "AGB-Seiten",
+          "revocationPage": "Widerrufsbelehrungen",
+          "shippingPaymentInfoPage": "Versand- und Zahlungsarten",
+          "privacyPage": "Datenschutz-Seiten",
+          "imprintPage": "Impressum",
+          "404Page": "404-Seiten",
+          "maintenancePage": "Wartungsseiten",
+          "contactPage": "Kontaktformulare",
+          "newsletterPage": "Newsletterseiten"
+        }
+      },
+      "cmsMissingElementModal": {
+        "headline": "Fehlende Elemente",
+        "title": "Das Element <span>{element}</span> fehlt in dieser Produkt-Detailseite. | Die Elemente <span>{element}</span> fehlen in dieser Produkt-Detailseite.",
+        "subtitle": "Kunden, die diese Seite besuchen, erhalten möglicherweise nicht alle wichtigen Produkt-Informationen.",
+        "paragraph": "Möchtest Du das Layout trotzdem speichern?",
+        "buttonSave": "Layout speichern"
       },
       "cmsListItem": {
         "emptyText": "Kein Layout zugewiesen",

@@ -157,6 +157,20 @@ class CustomerCollection extends EntityCollection
         );
     }
 
+    public function getListVatIds(): array
+    {
+        return $this->fmap(function (CustomerEntity $customer) {
+            return $customer->getVatIds();
+        });
+    }
+
+    public function filterByVatId(string $id): self
+    {
+        return $this->filter(function (CustomerEntity $customer) use ($id) {
+            return \in_array($id, $customer->getVatIds() ?? [], true);
+        });
+    }
+
     public function getApiAlias(): string
     {
         return 'customer_collection';

@@ -2,7 +2,9 @@
 
 namespace Shopware\Core\Checkout\Test\Customer\SalesChannel;
 
+use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
+use Shopware\Core\Checkout\Customer\Event\CustomerAccountRecoverRequestEvent;
 use Shopware\Core\Checkout\Test\Payment\Handler\V630\SyncTestPaymentHandler;
 use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Context;
@@ -100,6 +102,75 @@ class SendPasswordRecoveryMailRouteTest extends TestCase
         $response = json_decode($this->browser->getResponse()->getContent(), true);
 
         static::assertSame('VIOLATION::NO_SUCH_CHOICE_ERROR', $response['errors'][0]['code']);
+    }
+
+    /**
+     * @dataProvider sendMailWithDomainAndLeadingSlashProvider
+     */
+    public function testSendMailWithDomainAndLeadingSlash(array $domainUrlTest): void
+    {
+        $this->createCustomer('shopware1234', 'foo-test@test.de');
+
+        $this->addDomain($domainUrlTest['domain']);
+
+        $caughtEvent = null;
+        $this->getContainer()->get('event_dispatcher')->addListener(
+            CustomerAccountRecoverRequestEvent::EVENT_NAME,
+            static function (CustomerAccountRecoverRequestEvent $event) use (&$caughtEvent): void {
+                $caughtEvent = $event;
+            }
+        );
+
+        $this->browser
+            ->request(
+                'POST',
+                '/store-api/v' . PlatformRequest::API_VERSION . '/account/recovery-password',
+                [
+                    'email' => 'foo-test@test.de',
+                    'storefrontUrl' => $domainUrlTest['expectDomain'],
+                ]
+            );
+
+        static::assertEquals(200, $this->browser->getResponse()->getStatusCode());
+
+        /** @var CustomerAccountRecoverRequestEvent $caughtEvent */
+        static::assertInstanceOf(CustomerAccountRecoverRequestEvent::class, $caughtEvent);
+        static::assertStringStartsWith('http://my-evil-page/account/', $caughtEvent->getResetUrl());
+    }
+
+    public function sendMailWithDomainAndLeadingSlashProvider()
+    {
+        return [
+            // test without leading slash
+            [
+                ['domain' => 'http://my-evil-page', 'expectDomain' => 'http://my-evil-page'],
+            ],
+            // test with leading slash
+            [
+                ['domain' => 'http://my-evil-page/', 'expectDomain' => 'http://my-evil-page'],
+            ],
+            // test with double leading slash
+            [
+                ['domain' => 'http://my-evil-page//', 'expectDomain' => 'http://my-evil-page'],
+            ],
+        ];
+    }
+
+    private function addDomain(string $url): void
+    {
+        $snippetSetId = $this->getContainer()->get(Connection::class)
+            ->fetchColumn('SELECT LOWER(HEX(id)) FROM snippet_set LIMIT 1');
+
+        $domain = [
+            'salesChannelId' => $this->ids->create('sales-channel'),
+            'languageId' => Defaults::LANGUAGE_SYSTEM,
+            'url' => $url,
+            'currencyId' => Defaults::CURRENCY,
+            'snippetSetId' => $snippetSetId,
+        ];
+
+        $this->getContainer()->get('sales_channel_domain.repository')
+            ->create([$domain], Context::createDefaultContext());
     }
 
     private function createCustomer(string $password, ?string $email = null): string

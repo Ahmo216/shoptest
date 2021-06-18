@@ -13,6 +13,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepositoryInterface;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Request;
@@ -56,19 +57,20 @@ class CategoryRoute extends AbstractCategoryRoute
     }
 
     /**
+     * @Since("6.2.0.0")
      * @OA\Post(
      *      path="/category/{categoryId}",
-     *      description="Loads a category with the resolved cms page",
+     *      summary="Loads a category with the resolved cms page",
      *      operationId="readCategory",
      *      tags={"Store API", "Content"},
-     *      @OA\Parameter(
-     *          parameter="categoryId",
-     *          name="categoryId",
-     *          in="query",
-     *          description="Id of the category",
-     *          @OA\Schema(type="string", format="uuid"),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              @OA\Property(property="categoryId", description="Id of the category", type="string", format="uuid")
+     *          )
      *      ),
      *      @OA\Parameter(name="Api-Basic-Parameters"),
+     *      @OA\Parameter(name="categoryId", description="Category ID", @OA\Schema(type="string"), in="path", required=true),
      *      @OA\Response(
      *          response="200",
      *          description="The loaded category with cms page",
@@ -144,11 +146,11 @@ class CategoryRoute extends AbstractCategoryRoute
 
         $slots = $request->get('slots');
 
-        if (is_string($slots)) {
+        if (\is_string($slots)) {
             $slots = explode('|', $slots);
         }
 
-        if (!empty($slots) && is_array($slots)) {
+        if (!empty($slots) && \is_array($slots)) {
             $criteria
                 ->getAssociation('sections.blocks')
                 ->addFilter(new EqualsAnyFilter('slots.id', $slots));

@@ -5,7 +5,6 @@ namespace Shopware\Core\Checkout\Test\Customer\SalesChannel;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
-use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Test\TestCaseBase\IntegrationTestBehaviour;
 use Shopware\Core\Framework\Test\TestDataCollection;
 use Shopware\Core\Framework\Uuid\Uuid;
@@ -128,9 +127,7 @@ class ChangePasswordRouteTest extends TestCase
 
         static::assertArrayNotHasKey('errors', $response);
 
-        Feature::skipTestIfActive('FEATURE_NEXT_10058', $this);
-
-        static::assertTrue($response['success']);
+        static::assertNotEmpty($response['contextToken']);
 
         $this->browser
             ->request(
@@ -150,8 +147,6 @@ class ChangePasswordRouteTest extends TestCase
 
     public function testContextTokenIsReplacedAfterChangingPassword(): void
     {
-        Feature::skipTestIfInActive('FEATURE_NEXT_10058', $this);
-
         $this->browser
             ->request(
                 'POST',
@@ -165,13 +160,14 @@ class ChangePasswordRouteTest extends TestCase
 
         $response = json_decode($this->browser->getResponse()->getContent(), true);
 
-        $oldContextExists = $this->getContainer()->get(SalesChannelContextPersister::class)->load($this->contextToken);
+        $oldContextExists = $this->getContainer()->get(SalesChannelContextPersister::class)->load($this->contextToken, $this->ids->get('sales-channel'));
 
         static::assertEmpty($oldContextExists);
 
         // Token is replaced
         static::assertNotEquals($this->contextToken, $response['contextToken']);
-        $newContextExists = $this->getContainer()->get(SalesChannelContextPersister::class)->load($response['contextToken'], $this->customerId);
+
+        $newContextExists = $this->getContainer()->get(SalesChannelContextPersister::class)->load($response['contextToken'], $this->ids->get('sales-channel'), $this->customerId);
 
         static::assertNotEmpty($newContextExists);
     }

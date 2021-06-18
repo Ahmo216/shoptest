@@ -31,8 +31,12 @@ import './text-image/text-on-image';
 import './sidebar/sidebar-filter';
 import './sidebar/category-navigation';
 
+import './commerce/product-heading';
 import './commerce/product-three-column';
 import './commerce/product-listing';
 import './commerce/product-slider';
+import './commerce/gallery-buybox';
+import './commerce/product-description-reviews';
+import './commerce/cross-selling';
 
 import './form/form';

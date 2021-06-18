@@ -1,4 +1,5 @@
 import template from './sw-customer-base-form.html.twig';
+import './sw-customer-base-form.scss';
 import errorConfig from '../../error-config.json';
 
 const { Component } = Shopware;

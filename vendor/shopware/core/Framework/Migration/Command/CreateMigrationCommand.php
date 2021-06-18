@@ -63,6 +63,8 @@ class CreateMigrationCommand extends Command
         // Both dir and namespace were given
         if ($directory) {
             $this->createMigrationFile($name, $output, realpath($directory), $namespace);
+
+            return 0;
         }
 
         $pluginName = $input->getOption('plugin');
@@ -74,11 +76,11 @@ class CreateMigrationCommand extends Command
                 return (int) (mb_strpos($value->getName(), (string) $pluginName) === 0);
             });
 
-            if (count($pluginBundles) === 0) {
+            if (\count($pluginBundles) === 0) {
                 throw new \RuntimeException(sprintf('Plugin "%s" could not be found.', $pluginName));
             }
 
-            if (count($pluginBundles) > 1) {
+            if (\count($pluginBundles) > 1) {
                 throw new \RuntimeException(
                     sprintf(
                         'More than one pluginname starting with "%s" was found: %s',
@@ -116,7 +118,7 @@ class CreateMigrationCommand extends Command
         $path = rtrim($directory, '/') . '/Migration' . $timestamp . $name . '.php';
         $file = fopen($path, 'wb');
 
-        $template = file_get_contents(dirname(__DIR__) . '/Template/MigrationTemplate.txt');
+        $template = file_get_contents(\dirname(__DIR__) . '/Template/MigrationTemplate.txt');
         $params = [
             '%%namespace%%' => $namespace,
             '%%timestamp%%' => $timestamp,

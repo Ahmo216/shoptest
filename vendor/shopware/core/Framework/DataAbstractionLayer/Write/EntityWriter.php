@@ -382,7 +382,7 @@ class EntityWriter implements EntityWriterInterface
             $affectedDefinition = $this->registry->getByEntityName($affectedDefinitionClass);
 
             foreach ($keys as $key) {
-                if (!is_array($key)) {
+                if (!\is_array($key)) {
                     $key = ['id' => $key];
                 }
 
@@ -507,7 +507,7 @@ class EntityWriter implements EntityWriterInterface
         $resolved = $this->resolvePrimaryKeys($ids, $definition, $writeContext);
 
         if (!$definition instanceof MappingEntityDefinition) {
-            $restrictions = $this->foreignKeyResolver->getAffectedDeleteRestrictions($definition, $resolved, $writeContext->getContext());
+            $restrictions = $this->foreignKeyResolver->getAffectedDeleteRestrictions($definition, $resolved, $writeContext->getContext(), true);
 
             if (!empty($restrictions)) {
                 throw new RestrictDeleteViolationException($definition, [new RestrictDeleteViolation(Uuid::randomHex(), $restrictions)]);

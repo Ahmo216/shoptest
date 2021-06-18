@@ -59,7 +59,7 @@ class CustomFieldProtectionSubscriberTest extends TestCase
         $client = $this->createClient(null, false, false);
 
         $criteria = new Criteria();
-        $criteria->addFilter(new EqualsFilter('name', 'SwagApp'));
+        $criteria->addFilter(new EqualsFilter('name', 'test'));
 
         $appId = $this->appRepo->searchIds($criteria, Context::createDefaultContext())->firstId();
 
@@ -156,7 +156,7 @@ class CustomFieldProtectionSubscriberTest extends TestCase
 
         $data = json_decode($browser->getResponse()->getContent(), true);
 
-        if (!array_key_exists('access_token', $data)) {
+        if (!\array_key_exists('access_token', $data)) {
             throw new \RuntimeException(
                 'No token returned from API: ' . ($data['errors'][0]['detail'] ?? 'unknown error' . print_r($data, true))
             );

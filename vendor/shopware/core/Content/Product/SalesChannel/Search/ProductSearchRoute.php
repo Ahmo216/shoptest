@@ -17,6 +17,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\RequestCriteriaBuilder;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\Entity;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Routing\Exception\MissingRequestParameterException;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Request;
@@ -73,10 +74,11 @@ class ProductSearchRoute extends AbstractProductSearchRoute
     }
 
     /**
+     * @Since("6.2.0.0")
      * @Entity("product")
      * @OA\Get(
      *      path="/search",
-     *      description="Search",
+     *      summary="Search",
      *      operationId="searchPage",
      *      tags={"Store API","Search"},
      *      @OA\Parameter(
@@ -88,7 +90,7 @@ class ProductSearchRoute extends AbstractProductSearchRoute
      *      @OA\Response(
      *          response="200",
      *          description="Found products",
-     *          @OA\JsonContent(ref="#/definitions/ProductListingResult")
+     *          @OA\JsonContent(ref="#/components/schemas/ProductListingResult")
      *     )
      * )
      * @Route("/store-api/v{version}/search", name="store-api.search", methods={"POST"})

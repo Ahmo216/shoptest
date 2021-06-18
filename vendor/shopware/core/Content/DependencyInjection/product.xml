@@ -118,8 +118,29 @@
             <tag name="shopware.entity.definition" entity="product_sorting_translation"/>
         </service>
 
+        <service id="Shopware\Core\Content\Product\Aggregate\ProductSearchConfig\ProductSearchConfigDefinition">
+            <tag name="shopware.entity.definition" entity="product_search_config"/>
+            <tag name="shopware.feature" flag="FEATURE_NEXT_10552"/>
+        </service>
+
+        <service id="Shopware\Core\Content\Product\Aggregate\ProductSearchConfigField\ProductSearchConfigFieldDefinition">
+            <tag name="shopware.entity.definition" entity="product_search_config_field"/>
+            <tag name="shopware.feature" flag="FEATURE_NEXT_10552"/>
+        </service>
+
+        <service id="Shopware\Core\Content\Product\Aggregate\ProductSearchConfigField\ProductSearchConfigFieldExceptionHandler">
+            <tag name="shopware.dal.exception_handler"/>
+            <tag name="shopware.feature" flag="FEATURE_NEXT_10552"/>
+        </service>
+
+        <service id="Shopware\Core\Content\Product\Aggregate\ProductSearchConfig\ProductSearchConfigExceptionHandler">
+            <tag name="shopware.dal.exception_handler"/>
+            <tag name="shopware.feature" flag="FEATURE_NEXT_10552"/>
+        </service>
+
         <service id="Shopware\Core\Content\Product\Cart\ProductGateway">
             <argument type="service" id="sales_channel.product.repository"/>
+            <argument type="service" id="event_dispatcher"/>
         </service>
 
         <service id="Shopware\Core\Content\Product\Subscriber\ProductSubscriber">
@@ -128,6 +149,7 @@
 
         <service id="Shopware\Core\Content\Product\SearchKeyword\ProductSearchKeywordAnalyzer">
             <argument type="service" id="Shopware\Core\Framework\DataAbstractionLayer\Search\Term\Tokenizer"/>
+            <argument type="service" id="Shopware\Core\Framework\DataAbstractionLayer\Search\Term\Filter\TokenFilter" on-invalid="null"/>
         </service>
 
         <service id="Shopware\Core\Content\Product\Api\ProductActionController" public="true">
@@ -166,6 +188,29 @@
         <service id="Shopware\Core\Content\Product\Cms\ProductSliderCmsElementResolver">
             <argument type="service" id="Shopware\Core\Content\ProductStream\Service\ProductStreamBuilder"/>
             <tag name="shopware.cms.data_resolver"/>
+        </service>
+
+        <service id="Shopware\Core\Content\Product\Cms\ProductNameCmsElementResolver">
+            <tag name="shopware.cms.data_resolver" />
+            <tag name="shopware.feature" flag="FEATURE_NEXT_10078"/>
+        </service>
+
+        <service id="Shopware\Core\Content\Product\Cms\ManufacturerLogoCmsElementResolver">
+            <tag name="shopware.cms.data_resolver" />
+            <tag name="shopware.feature" flag="FEATURE_NEXT_10078"/>
+        </service>
+
+        <service id="Shopware\Core\Content\Product\Cms\CrossSellingCmsElementResolver">
+            <argument type="service" id="Shopware\Core\Content\Product\SalesChannel\CrossSelling\ProductCrossSellingRoute"/>
+            <tag name="shopware.cms.data_resolver"/>
+            <tag name="shopware.feature" flag="FEATURE_NEXT_10078"/>
+        </service>
+
+        <service id="Shopware\Core\Content\Product\Cms\ProductDescriptionReviewsCmsElementResolver">
+            <argument type="service" id="Shopware\Core\Content\Product\SalesChannel\Detail\ProductDetailRoute"/>
+            <argument type="service" id="Shopware\Core\Content\Product\SalesChannel\Review\ProductReviewRoute"/>
+            <tag name="shopware.cms.data_resolver"/>
+            <tag name="shopware.feature" flag="FEATURE_NEXT_10078"/>
         </service>
 
         <service id="Shopware\Core\Content\Product\SalesChannel\Price\ProductPriceDefinitionBuilderInterface"
@@ -300,6 +345,7 @@
             <argument type="service" id="sales_channel.product.repository"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
             <argument type="service" id="Shopware\Core\Content\Product\SalesChannel\Detail\ProductConfiguratorLoader"/>
+            <argument type="service" id="Shopware\Core\Content\Category\Service\CategoryBreadcrumbBuilder"/>
         </service>
 
         <service id="Shopware\Core\Content\Product\SalesChannel\Review\ProductReviewRoute" public="true">
@@ -332,6 +378,17 @@
 
         <service id="Shopware\Core\Content\Product\SalesChannel\ProductListListRoute" public="true">
             <argument type="service" id="sales_channel.product.repository"/>
+        </service>
+
+        <service id="Shopware\Core\Content\Product\Cms\BuyBoxCmsElementResolver">
+            <argument type="service" id="Shopware\Core\Content\Product\SalesChannel\Detail\ProductDetailRoute"/>
+            <tag name="shopware.cms.data_resolver"/>
+            <tag name="shopware.feature" flag="FEATURE_NEXT_10078"/>
+        </service>
+
+        <service id="Shopware\Core\Framework\DataAbstractionLayer\Search\Term\Filter\TokenFilter">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <tag name="shopware.feature" flag="FEATURE_NEXT_10552"/>
         </service>
     </services>
 </container>

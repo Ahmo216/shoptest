@@ -12,6 +12,9 @@ use Shopware\Core\Framework\Webhook\WebhookCollection;
 use Shopware\Core\System\CustomField\Aggregate\CustomFieldSet\CustomFieldSetCollection;
 use Shopware\Core\System\Integration\IntegrationEntity;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class AppEntity extends Entity
 {
     use EntityIdTrait;
@@ -62,6 +65,11 @@ class AppEntity extends Entity
     protected $modules;
 
     /**
+     * @var array|null
+     */
+    protected $cookies;
+
+    /**
      * @var string|null
      */
     protected $iconRaw;
@@ -89,6 +97,11 @@ class AppEntity extends Entity
     /**
      * @var string|null
      */
+    protected $privacyPolicyExtensions;
+
+    /**
+     * @var string|null
+     */
     protected $appSecret;
 
     /**
@@ -100,6 +113,11 @@ class AppEntity extends Entity
      * @var bool
      */
     protected $active;
+
+    /**
+     * @var bool
+     */
+    protected $configurable;
 
     /**
      * @var IntegrationEntity|null
@@ -237,6 +255,16 @@ class AppEntity extends Entity
     public function setModules(array $modules): void
     {
         $this->modules = $modules;
+    }
+
+    public function getCookies(): ?array
+    {
+        return $this->cookies;
+    }
+
+    public function setCookies(?array $cookies): void
+    {
+        $this->cookies = $cookies;
     }
 
     public function getIconRaw(): ?string
@@ -379,6 +407,16 @@ class AppEntity extends Entity
         $this->active = $active;
     }
 
+    public function isConfigurable(): bool
+    {
+        return $this->configurable;
+    }
+
+    public function setConfigurable(bool $configurable): void
+    {
+        $this->configurable = $configurable;
+    }
+
     public function getActionButtons(): ?ActionButtonCollection
     {
         return $this->actionButtons;
@@ -407,5 +445,15 @@ class AppEntity extends Entity
     public function setTemplates(TemplateCollection $templates): void
     {
         $this->templates = $templates;
+    }
+
+    public function getPrivacyPolicyExtensions(): ?string
+    {
+        return $this->privacyPolicyExtensions;
+    }
+
+    public function setPrivacyPolicyExtensions(?string $privacyPolicyExtensions): void
+    {
+        $this->privacyPolicyExtensions = $privacyPolicyExtensions;
     }
 }

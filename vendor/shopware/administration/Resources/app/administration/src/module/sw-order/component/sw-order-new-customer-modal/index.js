@@ -85,6 +85,8 @@ Component.register('sw-order-new-customer-modal', {
 
             this.customer.defaultShippingAddressId = billingAddress.id;
             this.customer.defaultBillingAddressId = billingAddress.id;
+
+            this.customer.vatIds = [];
         },
 
         onSave() {

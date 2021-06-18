@@ -7,7 +7,7 @@ const { Criteria } = Shopware.Data;
 Component.register('sw-cms-list', {
     template,
 
-    inject: ['repositoryFactory', 'acl'],
+    inject: ['repositoryFactory', 'acl', 'feature'],
 
     mixins: [
         Mixin.getByName('listing'),
@@ -60,26 +60,32 @@ Component.register('sw-cms-list', {
         },
 
         sortPageTypes() {
-            return [
+            const sortPageTypes = [
                 { value: '', name: this.$tc('sw-cms.sorting.labelSortByAllPages'), active: true },
                 { value: 'page', name: this.$tc('sw-cms.sorting.labelSortByShopPages') },
                 { value: 'landingpage', name: this.$tc('sw-cms.sorting.labelSortByLandingPages') },
                 { value: 'product_list', name: this.$tc('sw-cms.sorting.labelSortByCategoryPages') }
-
-                // Will be implemented in the future
-                // { value: 'product_detail', name: this.$tc('sw-cms.sorting.labelSortByProductPages'), disabled: true }
             ];
+
+            if (this.feature.isActive('FEATURE_NEXT_10078')) {
+                sortPageTypes.push({ value: 'product_detail', name: this.$tc('sw-cms.sorting.labelSortByProductPages') });
+            }
+
+            return sortPageTypes;
         },
 
         pageTypes() {
-            return {
+            const pageTypes = {
                 page: this.$tc('sw-cms.sorting.labelSortByShopPages'),
                 landingpage: this.$tc('sw-cms.sorting.labelSortByLandingPages'),
                 product_list: this.$tc('sw-cms.sorting.labelSortByCategoryPages')
-
-                // Will be implemented in the future
-                // product_detail: this.$tc('sw-cms.sorting.labelSortByProductPages')
             };
+
+            if (this.feature.isActive('FEATURE_NEXT_10078')) {
+                pageTypes.product_detail = this.$tc('sw-cms.sorting.labelSortByProductPages');
+            }
+
+            return pageTypes;
         },
 
         sortingConCat() {
@@ -108,9 +114,23 @@ Component.register('sw-cms-list', {
             this.isLoading = true;
             const criteria = new Criteria(this.page, this.limit);
             criteria.addAssociation('previewMedia')
-                .addAssociation('sections')
-                .addAssociation('categories')
                 .addSorting(Criteria.sort(this.sortBy, this.sortDirection));
+
+            if (!this.feature.isActive('FEATURE_NEXT_11253')) {
+                criteria.addAssociation('sections');
+                criteria.addAssociation('categories');
+            }
+
+            if (this.feature.isActive('FEATURE_NEXT_10078')) {
+                criteria.addAssociation('products');
+            }
+
+            if (!this.feature.isActive('FEATURE_NEXT_10078')) {
+                criteria.addFilter(Criteria.not(
+                    'AND',
+                    [Criteria.equals('type', 'product_detail')]
+                ));
+            }
 
             if (this.term !== null) {
                 criteria.setTerm(this.term);
@@ -299,8 +319,12 @@ Component.register('sw-cms-list', {
                 property: 'type',
                 label: this.$tc('sw-cms.list.gridHeaderType')
             }, {
-                property: 'categories.length',
-                label: this.$tc('sw-cms.list.gridHeaderAssignment'),
+                property: this.feature.isActive('FEATURE_NEXT_10078')
+                    ? 'assignments'
+                    : 'categories.length',
+                label: this.feature.isActive('FEATURE_NEXT_10078')
+                    ? this.$tc('sw-cms.list.gridHeaderAssignments')
+                    : this.$tc('sw-cms.list.gridHeaderAssignment'),
                 sortable: false
             }, {
                 property: 'createdAt',
@@ -309,6 +333,14 @@ Component.register('sw-cms-list', {
         },
 
         deleteDisabledToolTip(page) {
+            if (this.feature.isActive('FEATURE_NEXT_10078') && page.type === 'product_detail') {
+                return {
+                    showDelay: 300,
+                    message: this.$tc('sw-cms.general.deleteDisabledProductToolTip'),
+                    disabled: page.products.length === 0
+                };
+            }
+
             return {
                 showDelay: 300,
                 message: this.$tc('sw-cms.general.deleteDisabledToolTip'),

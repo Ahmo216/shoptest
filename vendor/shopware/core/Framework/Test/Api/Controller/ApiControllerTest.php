@@ -18,6 +18,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\MultiFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\NotFilter;
+use Shopware\Core\Framework\Test\IdsCollection;
 use Shopware\Core\Framework\Test\TestCaseBase\AdminApiTestBehaviour;
 use Shopware\Core\Framework\Test\TestCaseBase\BasicTestDataBehaviour;
 use Shopware\Core\Framework\Test\TestCaseBase\FilesystemBehaviour;
@@ -352,7 +353,7 @@ EOF;
 
         $this->getBrowser()->request('GET', '/api/v' . PlatformRequest::API_VERSION . '/product/' . $id . '/manufacturer');
         $responseData = json_decode($this->getBrowser()->getResponse()->getContent(), true);
-        static::assertSame(Response::HTTP_OK, $this->getBrowser()->getResponse()->getStatusCode(), 'Read manufacturer of product failed id: ' . $id . PHP_EOL . $this->getBrowser()->getResponse()->getContent());
+        static::assertSame(Response::HTTP_OK, $this->getBrowser()->getResponse()->getStatusCode(), 'Read manufacturer of product failed id: ' . $id . \PHP_EOL . $this->getBrowser()->getResponse()->getContent());
 
         static::assertArrayHasKey('data', $responseData, $this->getBrowser()->getResponse()->getContent());
         static::assertArrayHasKey(0, $responseData['data'], $this->getBrowser()->getResponse()->getContent());
@@ -405,7 +406,7 @@ EOF;
 
         $browser->request('GET', '/api/v' . PlatformRequest::API_VERSION . '/product/' . $id . '/manufacturer');
         $responseData = json_decode($browser->getResponse()->getContent(), true);
-        static::assertSame(Response::HTTP_OK, $browser->getResponse()->getStatusCode(), 'Read manufacturer of product failed id: ' . $id . PHP_EOL . $browser->getResponse()->getContent());
+        static::assertSame(Response::HTTP_OK, $browser->getResponse()->getStatusCode(), 'Read manufacturer of product failed id: ' . $id . \PHP_EOL . $browser->getResponse()->getContent());
 
         static::assertArrayHasKey('data', $responseData, $browser->getResponse()->getContent());
         static::assertArrayHasKey(0, $responseData['data'], $browser->getResponse()->getContent());
@@ -614,7 +615,7 @@ EOF;
 
         static::assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode(), $response->getContent());
 
-        $content = \json_decode($response->getContent(), true);
+        $content = json_decode($response->getContent(), true);
 
         static::assertSame((new LiveVersionDeleteException())->getErrorCode(), $content['errors'][0]['code']);
     }
@@ -1991,6 +1992,80 @@ EOF;
         $response = json_decode($this->getBrowser()->getResponse()->getContent(), true);
         static::assertArrayHasKey('aggregations', $response);
         static::assertArrayHasKey('order_count_month', $response['aggregations']);
+    }
+
+    public function testGetBillingAddress(): void
+    {
+        $ids = new IdsCollection();
+
+        $data = [
+            'id' => $ids->get('customer'),
+            'number' => '1337',
+            'salutationId' => $this->getValidSalutationId(),
+            'firstName' => 'Max',
+            'lastName' => 'Mustermann',
+            'customerNumber' => '1337',
+            'email' => Uuid::randomHex() . '@example.com',
+            'password' => 'shopware',
+            'defaultPaymentMethodId' => $this->getValidPaymentMethodId(),
+            'groupId' => Defaults::FALLBACK_CUSTOMER_GROUP,
+            'salesChannelId' => Defaults::SALES_CHANNEL,
+            'defaultBillingAddressId' => $ids->get('address'),
+            'defaultShippingAddressId' => $ids->get('address'),
+            'addresses' => [
+                [
+                    'id' => $ids->get('address'),
+                    'customerId' => $ids->get('customer'),
+                    'countryId' => $this->getValidCountryId(),
+                    'salutationId' => $this->getValidSalutationId(),
+                    'firstName' => 'Max',
+                    'lastName' => 'Mustermann',
+                    'street' => 'Ebbinghoff 10',
+                    'zipcode' => '48624',
+                    'city' => 'Schöppingen',
+                ],
+            ],
+        ];
+        $this->getContainer()->get('customer.repository')
+            ->create([$data], $ids->getContext());
+
+        $this->getBrowser()->request('POST', '/api/v' . PlatformRequest::API_VERSION . '/search/customer/' . $ids->get('customer') . '/default-billing-address');
+        static::assertSame(Response::HTTP_OK, $this->getBrowser()->getResponse()->getStatusCode());
+
+        $response = json_decode($this->getBrowser()->getResponse()->getContent(), true);
+        static::assertArrayHasKey('data', $response);
+        static::assertCount(1, $response['data']);
+        static::assertEquals($ids->get('address'), $response['data'][0]['id']);
+    }
+
+    public function testAccessDeniedAfterChangingUserPassword(): void
+    {
+        $browser = $this->getBrowser();
+
+        /** @var Connection $connection */
+        $connection = $browser->getContainer()->get(Connection::class);
+        $admin = TestUser::createNewTestUser($connection, ['product:read']);
+
+        $admin->authorizeBrowser($browser);
+
+        $browser->request('POST', '/api/v' . PlatformRequest::API_VERSION . '/search/product', []);
+        $response = $browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), $response->getContent());
+
+        $userRepository = $this->getContainer()->get('user.repository');
+
+        // Change user password
+        $userRepository->update([[
+            'id' => $admin->getUserId(),
+            'password' => Uuid::randomHex(),
+        ]], Context::createDefaultContext());
+
+        $browser->request('POST', '/api/v' . PlatformRequest::API_VERSION . '/search/product', []);
+        $response = $browser->getResponse();
+
+        static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode(), $response->getContent());
+        $jsonResponse = \json_decode($response->getContent(), true);
+        static::assertEquals('Access token is expired', $jsonResponse['errors'][0]['detail']);
     }
 
     private function createSalesChannel(string $id): void

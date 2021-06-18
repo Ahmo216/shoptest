@@ -61,6 +61,7 @@ import FilterMultiSelectPlugin from 'src/plugin/listing/filter-multi-select.plug
 import FilterPropertySelectPlugin from 'src/plugin/listing/filter-property-select.plugin';
 import FilterBooleanPlugin from 'src/plugin/listing/filter-boolean.plugin';
 import FilterRangePlugin from 'src/plugin/listing/filter-range.plugin';
+// @deprecated tag:v6.4.0 - Will be replaced with new rating plugin
 import FilterRatingPlugin from 'src/plugin/listing/filter-rating.plugin';
 import ListingPlugin from 'src/plugin/listing/listing.plugin';
 import OffCanvasFilterPlugin from 'src/plugin/offcanvas-filter/offcanvas-filter.plugin';
@@ -78,6 +79,12 @@ import SwagBlockLink from 'src/helper/block-link.helper';
 import StoreApiClient from 'src/service/store-api-client.service';
 import ClearInputPlugin from 'src/plugin/clear-input-button/clear-input.plugin';
 import CmsGdprVideoElement from 'src/plugin/cms-gdpr-video-element/cms-gdpr-video-element.plugin';
+import WishlistWidgetPlugin from 'src/plugin/header/wishlist-widget.plugin';
+import WishlistLocalStoragePlugin from 'src/plugin/wishlist/local-wishlist.plugin';
+import WishlistPersistStoragePlugin from 'src/plugin/wishlist/persist-wishlist.plugin';
+import AddToWishlistPlugin from 'src/plugin/wishlist/add-to-wishlist.plugin';
+import BuyBoxPlugin from 'src/plugin/buy-box/buy-box.plugin';
+import GuestWishlistPagePlugin from 'src/plugin/wishlist/guest-wishlist-page.plugin';
 
 window.eventEmitter = new NativeEventEmitter();
 
@@ -132,6 +139,7 @@ PluginManager.register('FilterBoolean', FilterBooleanPlugin, '[data-filter-boole
 PluginManager.register('FilterRange', FilterRangePlugin, '[data-filter-range]');
 PluginManager.register('FilterMultiSelect', FilterMultiSelectPlugin, '[data-filter-multi-select]');
 PluginManager.register('FilterPropertySelect', FilterPropertySelectPlugin, '[data-filter-property-select]');
+// @deprecated tag:v6.4.0 - Will be replaced with new rating plugin
 PluginManager.register('FilterRating', FilterRatingPlugin, '[data-filter-rating]');
 PluginManager.register('ListingPagination', ListingPaginationPlugin, '[data-listing-pagination]');
 PluginManager.register('ListingSorting', ListingSortingPlugin, '[data-listing-sorting]');
@@ -143,6 +151,22 @@ PluginManager.register('Ellipsis', EllipsisPlugin, '[data-ellipsis]');
 PluginManager.register('SwagBlockLink', SwagBlockLink, '[href="#not-found"]');
 PluginManager.register('ClearInput', ClearInputPlugin, '[data-clear-input]');
 PluginManager.register('CmsGdprVideoElement', CmsGdprVideoElement, '[data-cms-gdpr-video-element]');
+
+if (window.wishlistEnabled) {
+    if (window.customerLoggedInState) {
+        PluginManager.register('WishlistStorage', WishlistPersistStoragePlugin, '[data-wishlist-storage]');
+    } else {
+        PluginManager.register('WishlistStorage', WishlistLocalStoragePlugin, '[data-wishlist-storage]');
+        PluginManager.register('GuestWishlistPage', GuestWishlistPagePlugin, '[data-guest-wishlist-page]');
+    }
+
+    PluginManager.register('AddToWishlist', AddToWishlistPlugin, '[data-add-to-wishlist]');
+    PluginManager.register('WishlistWidget', WishlistWidgetPlugin, '[data-wishlist-widget]');
+}
+
+if (Feature.isActive('FEATURE_NEXT_10078')) {
+    PluginManager.register('BuyBox', BuyBoxPlugin, '[data-buy-box]');
+}
 
 if (window.csrf.enabled && window.csrf.mode === 'ajax') {
     PluginManager.register('FormCsrfHandler', FormCsrfHandlerPlugin, '[data-form-csrf-handler]');
@@ -174,3 +198,4 @@ new AjaxModalExtensionUtil();
 new TimezoneUtil();
 
 new TooltipUtil();
+

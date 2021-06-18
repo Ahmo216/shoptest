@@ -223,7 +223,7 @@ class DocumentService
         $generatedDocument->setFilename(
             $documentGenerator->getFileName($config) . '.' . $fileGenerator->getExtension()
         );
-        $generatedDocument->setPageOrientation($config->getPageOrientation());
+        $generatedDocument->setPageOrientation($config->getPageOrientation() ?? $documentConfiguration->getPageOrientation());
         $generatedDocument->setPageSize($config->getPageSize());
         $generatedDocument->setFileBlob($fileGenerator->generate($generatedDocument));
         $generatedDocument->setContentType($fileGenerator->getContentType());
@@ -296,6 +296,9 @@ class DocumentService
         if ($deepLinkCode !== '') {
             $criteria->addFilter(new EqualsFilter('deepLinkCode', $deepLinkCode));
         }
+
+        $criteria->addAssociation('deliveries.shippingOrderAddress.country');
+        $criteria->addAssociation('orderCustomer.customer');
 
         $versionContext = $context->createWithVersionId($versionId);
 

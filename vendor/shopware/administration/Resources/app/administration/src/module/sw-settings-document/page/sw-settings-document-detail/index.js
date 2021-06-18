@@ -2,12 +2,14 @@ import template from './sw-settings-document-detail.html.twig';
 import './sw-settings-document-detail.scss';
 
 const { Component, Mixin } = Shopware;
+const { get, cloneDeep } = Shopware.Utils.object;
 const { Criteria, EntityCollection } = Shopware.Data;
+const { mapPropertyErrors } = Component.getComponentHelper();
 
 Component.register('sw-settings-document-detail', {
     template,
 
-    inject: ['repositoryFactory', 'acl'],
+    inject: ['repositoryFactory', 'acl', 'feature'],
 
     mixins: [
         Mixin.getByName('notification'),
@@ -30,13 +32,20 @@ Component.register('sw-settings-document-detail', {
 
     data() {
         return {
-            documentConfig: {},
+            documentConfig: {
+                config: {
+                    displayAdditionalNoteDelivery: false
+                }
+            },
             documentConfigSalesChannelOptionsCollection: [],
             documentConfigSalesChannels: [],
             isLoading: false,
             isSaveSuccessful: false,
             salesChannels: {},
             selectedType: {},
+            isShowDisplayNoteDelivery: false,
+            isShowDivergentDeliveryAddress: false,
+            isShowCountriesSelect: false,
             generalFormFields: [
                 {
                     name: 'pageOrientation',
@@ -68,6 +77,15 @@ Component.register('sw-settings-document-detail', {
                         label: this.$tc('sw-settings-document.detail.labelPageSize')
                     }
                 },
+                {
+                    name: 'itemsPerPage',
+                    type: 'text',
+                    config: {
+                        type: 'text',
+                        label: this.$tc('sw-settings-document.detail.labelItemsPerPage')
+                    }
+                },
+                null,
                 {
                     name: 'displayHeader',
                     type: 'bool',
@@ -116,14 +134,13 @@ Component.register('sw-settings-document-detail', {
                         label: this.$tc('sw-settings-document.detail.labelDisplayPrices')
                     }
                 },
-
-
                 {
-                    name: 'itemsPerPage',
-                    type: 'text',
+                    name: 'displayInCustomerAccount',
+                    type: 'bool',
                     config: {
-                        type: 'text',
-                        label: this.$tc('sw-settings-document.detail.labelItemsPerPage')
+                        type: 'checkbox',
+                        label: this.$tc('sw-settings-document.detail.labelDisplayDocumentInCustomerAccount'),
+                        helpText: this.$tc('sw-settings-document.detail.helpTextDisplayDocumentInCustomerAccount')
                     }
                 }
             ],
@@ -159,6 +176,14 @@ Component.register('sw-settings-document-detail', {
                     config: {
                         type: 'text',
                         label: this.$tc('sw-settings-document.detail.labelCompanyEmail')
+                    }
+                },
+                {
+                    name: 'companyPhone',
+                    type: 'text',
+                    config: {
+                        type: 'text',
+                        label: this.$tc('sw-settings-document.detail.labelCompanyPhone')
                     }
                 },
                 {
@@ -255,7 +280,11 @@ Component.register('sw-settings-document-detail', {
 
     computed: {
         identifier() {
-            return this.documentConfig ? this.documentConfig.name : '';
+            return get(this.documentConfig, 'name', '');
+        },
+
+        countryRepository() {
+            return this.repositoryFactory.create('country');
         },
 
         documentBaseConfigCriteria() {
@@ -304,7 +333,21 @@ Component.register('sw-settings-document-detail', {
                 message: 'ESC',
                 appearance: 'light'
             };
-        }
+        },
+
+        showCountriesSelect() {
+            if (!this.isShowDisplayNoteDelivery) {
+                return false;
+            }
+
+            const documentConfig = cloneDeep(this.documentConfig);
+
+            return documentConfig.config && documentConfig.config.displayAdditionalNoteDelivery;
+        },
+        documentBaseConfig() {
+            return this.documentConfig;
+        },
+        ...mapPropertyErrors('documentBaseConfig', ['name', 'documentTypeId'])
     },
 
     created() {
@@ -327,20 +370,31 @@ Component.register('sw-settings-document-detail', {
         },
 
         async loadEntityData() {
+            this.isLoading = true;
+            const documentConfigId = this.documentConfigId || this.$route.params.id;
+
             this.documentConfig = await this.documentBaseConfigRepository.get(
-                this.documentConfigId,
+                documentConfigId,
                 Shopware.Context.api,
                 this.documentBaseConfigCriteria
             );
-
-            if (this.documentConfig.config === null) {
-                this.documentConfig.config = {};
+            if (!this.documentConfig) {
+                this.documentConfig = {};
             }
+            if (!this.documentConfig.config) {
+                this.$set(this.documentConfig, 'config', {});
+            }
+
             await this.onChangeType(this.documentConfig.documentType);
+
+            if (this.documentConfig.salesChannels === undefined) {
+                this.$set(this.documentConfig, 'salesChannels', []);
+            }
 
             this.documentConfig.salesChannels.forEach(salesChannelAssoc => {
                 this.documentConfigSalesChannels.push(salesChannelAssoc.id);
             });
+            this.isLoading = false;
         },
 
         async loadAvailableSalesChannel() {
@@ -360,6 +414,15 @@ Component.register('sw-settings-document-detail', {
 
             this.documentConfig.documentType = documentType;
             this.documentConfigSalesChannels = [];
+            this.isShowDisplayNoteDelivery = false;
+            this.isShowDivergentDeliveryAddress = false;
+
+            const documentTypeCurrent = cloneDeep(documentType);
+
+            if (documentTypeCurrent.technicalName === 'invoice') {
+                this.isShowDisplayNoteDelivery = true;
+                this.isShowDivergentDeliveryAddress = true;
+            }
 
             this.createSalesChannelSelectOptions();
             const documentSalesChannelCriteria = new Criteria();
@@ -400,7 +463,10 @@ Component.register('sw-settings-document-detail', {
         },
 
         saveFinish() {
-            this.isSaveSuccessful = false;
+            if (this.documentConfig.isNew()) {
+                this.$router.replace({ name: 'sw.settings.document.detail', params: { id: this.documentConfig.id } });
+            }
+            this.loadEntityData();
         },
 
         onSave() {
@@ -413,13 +479,19 @@ Component.register('sw-settings-document-detail', {
                 this.isSaveSuccessful = true;
             }).catch(() => {
                 this.isLoading = false;
-            }).then(() => {
-                this.loadEntityData();
             });
         },
 
         onCancel() {
             this.$router.push({ name: 'sw.settings.document.index' });
+        },
+
+        /** @deprecated tag:v6.4.0 - Will be removed */
+        onChangeDisplayNoteDelivery() {
+            const documentConfig = cloneDeep(this.documentConfig);
+            if (documentConfig.config && !documentConfig.config.displayAdditionalNoteDelivery) {
+                this.documentConfig.config.deliveryCountries = [];
+            }
         },
 
         createSalesChannelSelectOptions() {

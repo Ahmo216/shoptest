@@ -147,8 +147,62 @@ class InvoiceServiceTest extends TestCase
         $generatorOutput = $pdfGenerator->generate($generatedDocument);
         static::assertNotEmpty($generatorOutput);
 
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $finfo = new \finfo(\FILEINFO_MIME_TYPE);
         static::assertEquals('application/pdf', $finfo->buffer($generatorOutput));
+    }
+
+    public function testGenerateWithShippingAddress(): void
+    {
+        /** @var InvoiceGenerator $invoiceService */
+        $invoiceService = $this->getContainer()->get(InvoiceGenerator::class);
+
+        $possibleTaxes = [7, 19, 22];
+        //generates one line item for each tax
+        $cart = $this->generateDemoCart($possibleTaxes);
+        $orderId = $this->persistCart($cart);
+        /** @var OrderEntity $order */
+        $order = $this->getOrderById($orderId);
+        $country = $order->getDeliveries()->getShippingAddress()->getCountries()->first();
+        $country->setCompanyTaxFree(true);
+        $companyPhone = '123123123';
+        $vatIds = ['VAT-123123'];
+        $order->getOrderCustomer()->getCustomer()->setVatIds($vatIds);
+
+        $documentConfiguration = DocumentConfigurationFactory::mergeConfiguration(
+            new DocumentConfiguration(),
+            [
+                'displayLineItems' => true,
+                'itemsPerPage' => 10,
+                'displayFooter' => true,
+                'displayHeader' => true,
+                'executiveDirector' => true,
+                'displayDivergentDeliveryAddress' => true,
+                'companyPhone' => $companyPhone,
+                'intraCommunityDelivery' => true,
+                'displayAdditionalNoteDelivery' => true,
+                'deliveryCountries' => [$country->getId()],
+            ]
+        );
+
+        $context = Context::createDefaultContext();
+
+        $processedTemplate = $invoiceService->generate(
+            $order,
+            $documentConfiguration,
+            $context
+        );
+
+        $shippingAddress = $order->getDeliveries()->getShippingAddress()->first();
+
+        static::assertStringContainsString('Shipping address', $processedTemplate);
+        static::assertStringContainsString($shippingAddress->getStreet(), $processedTemplate);
+        static::assertStringContainsString($shippingAddress->getCity(), $processedTemplate);
+        static::assertStringContainsString($shippingAddress->getFirstName(), $processedTemplate);
+        static::assertStringContainsString($shippingAddress->getLastName(), $processedTemplate);
+        static::assertStringContainsString($shippingAddress->getZipcode(), $processedTemplate);
+        static::assertStringContainsString('Intra-community delivery (EU)', $processedTemplate);
+        static::assertStringContainsString($vatIds[0], $processedTemplate);
+        static::assertStringContainsString($companyPhone, $processedTemplate);
     }
 
     /**
@@ -359,7 +413,9 @@ class InvoiceServiceTest extends TestCase
             ->addAssociation('lineItems')
             ->addAssociation('currency')
             ->addAssociation('language.locale')
-            ->addAssociation('transactions');
+            ->addAssociation('transactions')
+            ->addAssociation('deliveries.shippingOrderAddress.country')
+            ->addAssociation('orderCustomer.customer');
 
         $order = $this->getContainer()->get('order.repository')
             ->search($criteria, $this->context)

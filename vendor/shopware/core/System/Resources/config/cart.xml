@@ -35,6 +35,11 @@
             <label lang="de-DE">Kommentarfeld auf der Bestellabschlussseite anzeigen</label>
         </input-field>
 
+        <input-field type="bool">
+            <name>logoutGuestAfterCheckout</name>
+            <label>Automatically log out guest customers after order completion</label>
+            <label lang="de-DE">Gastkunden nach dem Bestellabschluss automatisch ausloggen</label>
+        </input-field>
     </card>
 
     <card>
@@ -48,6 +53,7 @@
             <flag>FEATURE_NEXT_10549</flag>
         </input-field>
 
+        <flag>FEATURE_NEXT_10549</flag>
     </card>
 
 </config>

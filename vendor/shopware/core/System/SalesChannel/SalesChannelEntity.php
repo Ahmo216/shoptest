@@ -4,6 +4,7 @@ namespace Shopware\Core\System\SalesChannel;
 
 use Shopware\Core\Checkout\Customer\Aggregate\CustomerGroup\CustomerGroupCollection;
 use Shopware\Core\Checkout\Customer\Aggregate\CustomerGroup\CustomerGroupEntity;
+use Shopware\Core\Checkout\Customer\Aggregate\CustomerWishlist\CustomerWishlistCollection;
 use Shopware\Core\Checkout\Customer\CustomerCollection;
 use Shopware\Core\Checkout\Document\Aggregate\DocumentBaseConfig\DocumentBaseConfigDefinition;
 use Shopware\Core\Checkout\Order\OrderCollection;
@@ -13,6 +14,7 @@ use Shopware\Core\Checkout\Promotion\Aggregate\PromotionSalesChannel\PromotionSa
 use Shopware\Core\Checkout\Shipping\ShippingMethodCollection;
 use Shopware\Core\Checkout\Shipping\ShippingMethodEntity;
 use Shopware\Core\Content\Category\CategoryEntity;
+use Shopware\Core\Content\LandingPage\LandingPageCollection;
 use Shopware\Core\Content\MailTemplate\Aggregate\MailHeaderFooter\MailHeaderFooterEntity;
 use Shopware\Core\Content\MailTemplate\Aggregate\MailTemplateSalesChannel\MailTemplateSalesChannelCollection;
 use Shopware\Core\Content\Newsletter\Aggregate\NewsletterRecipient\NewsletterRecipientCollection;
@@ -349,11 +351,21 @@ class SalesChannelEntity extends Entity
     protected $eventActions;
 
     /**
-     * @internal (flag:FEATURE_NEXT_10555)
-     *
      * @var CustomerCollection|null
      */
     protected $boundCustomers;
+
+    /**
+     * @var CustomerWishlistCollection|null
+     */
+    protected $wishlists;
+
+    /**
+     * @internal (flag:FEATURE_NEXT_12032)
+     *
+     * @var LandingPageCollection|null
+     */
+    protected $landingPages;
 
     public function getMailHeaderFooter(): ?MailHeaderFooterEntity
     {
@@ -979,5 +991,31 @@ class SalesChannelEntity extends Entity
     public function setBoundCustomers(CustomerCollection $boundCustomers): void
     {
         $this->boundCustomers = $boundCustomers;
+    }
+
+    public function getWishlists(): ?CustomerWishlistCollection
+    {
+        return $this->wishlists;
+    }
+
+    public function setWishlists(CustomerWishlistCollection $wishlists): void
+    {
+        $this->wishlists = $wishlists;
+    }
+
+    /**
+     * @internal (flag:FEATURE_NEXT_12032)
+     */
+    public function getLandingPages(): ?LandingPageCollection
+    {
+        return $this->landingPages;
+    }
+
+    /**
+     * @internal (flag:FEATURE_NEXT_12032)
+     */
+    public function setLandingPages(LandingPageCollection $landingPages): void
+    {
+        $this->landingPages = $landingPages;
     }
 }

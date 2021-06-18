@@ -21,7 +21,7 @@ Component.register('sw-entity-multi-select', {
 
     props: {
         labelProperty: {
-            type: String,
+            type: [String, Array],
             required: false,
             default: 'name'
         },
@@ -63,6 +63,12 @@ Component.register('sw-entity-multi-select', {
             required: true
         },
 
+        entityName: {
+            type: String,
+            required: false,
+            default: null
+        },
+
         context: {
             type: Object,
             required: false,
@@ -90,7 +96,7 @@ Component.register('sw-entity-multi-select', {
 
     computed: {
         repository() {
-            return this.repositoryFactory.create(this.entityCollection.entity);
+            return this.repositoryFactory.create(this.entityName || this.entityCollection.entity);
         },
 
         visibleValues() {
@@ -154,7 +160,7 @@ Component.register('sw-entity-multi-select', {
         loadData() {
             this.isLoading = true;
 
-            return this.repository.search(this.criteria, this.context).then((result) => {
+            return this.repository.search(this.criteria, { ...this.context, inheritance: true }).then((result) => {
                 this.displaySearch(result);
 
                 this.isLoading = false;
@@ -191,6 +197,20 @@ Component.register('sw-entity-multi-select', {
                     }
                 });
             }
+        },
+
+        displayLabelProperty(item) {
+            const labelProperties = [];
+
+            if (Array.isArray(this.labelProperty)) {
+                labelProperties.push(...this.labelProperty);
+            } else {
+                labelProperties.push(this.labelProperty);
+            }
+
+            return labelProperties.map(labelProperty => {
+                return this.getKey(item, labelProperty) || this.getKey(item, `translated.${labelProperty}`);
+            }).join(' ');
         },
 
         resetActiveItem() {

@@ -89,6 +89,23 @@ const createWrapper = (customOptions, privileges = []) => {
             'sw-icon': true,
             'sw-card': true,
             'sw-container': true,
+            'sw-form-field-renderer': true,
+            'sw-checkbox-field': {
+                template: `
+                    <div class="sw-field--checkbox">
+                        <div class="sw-field--checkbox__content">
+                            <div class="sw-field__checkbox">
+                                <input type="checkbox" />
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            'sw-entity-multi-id-select': true,
+            'sw-entity-multi-select': true,
+            'sw-select-base': true,
+            'sw-base-field': true,
+            'sw-field-error': true,
             'sw-media-field': { template: '<div id="sw-media-field"/>', props: ['disabled'] },
             'sw-multi-select': { template: '<div id="documentSalesChannel"/>', props: ['disabled'] }
         },
@@ -102,6 +119,9 @@ const createWrapper = (customOptions, privileges = []) => {
             },
             acl: {
                 can: key => (key ? privileges.includes(key) : true)
+            },
+            feature: {
+                isActive: () => true
             }
         }
     };
@@ -206,6 +226,9 @@ describe('src/module/sw-settings-document/page/sw-settings-document-detail', () 
 
         await wrapper.vm.$nextTick();
         await wrapper.vm.$nextTick();
+        await wrapper.vm.$nextTick();
+        await wrapper.vm.$nextTick();
+
 
         expect(wrapper.find('.sw-settings-document-detail__save-action').attributes().disabled).toBeUndefined();
         expect(wrapper.find('#sw-media-field').props().disabled).toEqual(false);
@@ -223,5 +246,117 @@ describe('src/module/sw-settings-document/page/sw-settings-document-detail', () 
         expect(wrapper.find('#sw-media-field').props().disabled).toEqual(true);
         expect(wrapper.findAll('.sw-field').wrappers.every(field => field.props().disabled)).toEqual(true);
         expect(wrapper.find('#documentSalesChannel').props().disabled).toEqual(true);
+    });
+
+    it('should create an invoice document with countries note delivery', async () => {
+        const wrapper = createWrapper({}, ['document.editor']);
+
+        await wrapper.vm.$nextTick();
+        await wrapper.setData({
+            isShowDisplayNoteDelivery: true,
+            documentConfig: {
+                config: {
+                    displayAdditionalNoteDelivery: true
+                }
+            }
+        });
+
+        const displayAdditionalNoteDeliveryCheckbox = wrapper.find(
+            '.sw-settings-document-detail__field_additional_note_delivery'
+        );
+        const deliveryCountriesSelect = wrapper.find(
+            '.sw-settings-document-detail__field_delivery_countries'
+        );
+
+        expect(displayAdditionalNoteDeliveryCheckbox.attributes('value')).toBe('true');
+        expect(displayAdditionalNoteDeliveryCheckbox.attributes('label')).toBe('sw-settings-document.detail.labelDisplayAdditionalNoteDelivery');
+        expect(deliveryCountriesSelect.attributes('helptext')).toBe('sw-settings-document.detail.helpTextDisplayDeliveryCountries');
+        expect(deliveryCountriesSelect.attributes('label')).toBe('sw-settings-document.detail.labelDeliveryCountries');
+    });
+
+    it('should contain field "display divergent delivery address" in invoice form field', async () => {
+        const wrapper = createWrapper({}, ['document.editor']);
+
+        await wrapper.vm.$nextTick();
+        await wrapper.setData({
+            isShowDivergentDeliveryAddress: true
+        });
+
+        const displayDivergentDeliveryAddress = wrapper.find(
+            '.sw-settings-document-detail__field_divergent_delivery_address'
+        );
+        expect(displayDivergentDeliveryAddress).toBeDefined();
+        expect(displayDivergentDeliveryAddress.attributes('label')).toBe('sw-settings-document.detail.labelDisplayDivergentDeliveryAddress');
+    });
+
+    it('should not exist "display divergent delivery address" in general form field and company form field', async () => {
+        const wrapper = createWrapper({}, ['document.editor']);
+
+        await wrapper.vm.$nextTick();
+
+        const companyFormFields = wrapper.vm.companyFormFields;
+        const generalFormFields = wrapper.vm.generalFormFields;
+
+        const fieldDivergentDeliveryAddressInCompany = companyFormFields.find(
+            companyFormField => companyFormField && companyFormField.name === 'displayDivergentDeliveryAddress'
+        );
+        const fieldDivergentDeliveryAddressInGeneral = generalFormFields.find(
+            generalFormField => generalFormField && generalFormField.name === 'displayDivergentDeliveryAddress'
+        );
+        expect(fieldDivergentDeliveryAddressInCompany).toBeUndefined();
+        expect(fieldDivergentDeliveryAddressInGeneral).toBeUndefined();
+    });
+
+    it('should be have config company phone number', async () => {
+        const wrapper = createWrapper({}, ['document.editor']);
+
+        await wrapper.vm.$nextTick();
+
+        const companyFormFields = wrapper.vm.companyFormFields;
+
+        expect(
+            companyFormFields.map(item => item && item.name).includes('companyPhone')
+        ).toEqual(true);
+
+        const fieldCompanyPhone = companyFormFields.find(
+            item => item && item.name === 'companyPhone'
+        );
+        expect(fieldCompanyPhone).toBeDefined();
+        expect(fieldCompanyPhone).toEqual(
+            expect.objectContaining({
+                name: 'companyPhone',
+                type: 'text',
+                config: {
+                    type: 'text',
+                    label: expect.any(String)
+                }
+            })
+        );
+    });
+
+    it('should be have countries in country select when have toggle display intra-community delivery checkbox', async () => {
+        const wrapper = createWrapper({}, ['document.editor']);
+
+        await wrapper.vm.$nextTick();
+        await wrapper.setData({
+            isShowDisplayNoteDelivery: true,
+            documentConfig: {
+                config: {
+                    deliveryCountries: [
+                        '0110c22a5a92481aa8722a782dfc2573',
+                        '0143d24eb0264eb89cc34f50d427b828'
+                    ]
+                }
+            }
+        });
+
+        const displayAdditionalNoteDeliveryCheckbox = wrapper.find(
+            '.sw-settings-document-detail__field_additional_note_delivery input'
+        );
+
+        displayAdditionalNoteDeliveryCheckbox.setChecked();
+
+        expect(displayAdditionalNoteDeliveryCheckbox.element.checked).toBe(true);
+        expect(wrapper.vm.documentConfig.config.deliveryCountries.length).toEqual(2);
     });
 });

@@ -146,6 +146,16 @@
                             </sw-tabs-item>
                         {% endblock %}
 
+                        {% block sw_product_detail_content_tabs_layout %}
+                            <sw-tabs-item
+                                v-if="feature.isActive('FEATURE_NEXT_10078')"
+                                class="sw-product-detail__tab-layout"
+                                :route="{ name: 'sw.product.detail.layout', params: { id: $route.params.id } }"
+                                :title="$tc('sw-product.detail.tabLayout')">
+                                {{ $tc('sw-product.detail.tabLayout') }}
+                            </sw-tabs-item>
+                        {% endblock %}
+
                         {% block sw_product_detail_content_tabs_cross_selling %}
                             <sw-tabs-item
                                 v-if="!isChild"
@@ -164,7 +174,10 @@
                 {% endblock %}
 
                 {% block sw_product_detail_content_clone_modal %}
-                    <sw-product-clone-modal :product="product" v-if="cloning" @clone-finish="onDuplicateFinish"></sw-product-clone-modal>
+                    <sw-product-clone-modal v-if="cloning"
+                        :product="product"
+                        @clone-finish="onDuplicateFinish">
+                    </sw-product-clone-modal>
                 {% endblock %}
             </sw-card-view>
         {% endblock %}

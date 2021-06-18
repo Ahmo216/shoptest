@@ -3,7 +3,6 @@
 namespace Shopware\Core\Checkout\Customer\SalesChannel;
 
 use OpenApi\Annotations as OA;
-use Shopware\Core\Checkout\Cart\Exception\CustomerNotLoggedInException;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Checkout\Customer\CustomerEvents;
 use Shopware\Core\Framework\Context;
@@ -11,7 +10,9 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Event\DataMappingEvent;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\ContextTokenRequired;
+use Shopware\Core\Framework\Routing\Annotation\LoginRequired;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Validation\BuildValidationEvent;
 use Shopware\Core\Framework\Validation\DataBag\DataBag;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
@@ -68,40 +69,34 @@ class ChangeCustomerProfileRoute extends AbstractChangeCustomerProfileRoute
     }
 
     /**
+     * @Since("6.2.0.0")
      * @OA\Post(
      *      path="/account/change-profile",
-     *      description="Change profile information",
+     *      summary="Change profile information",
      *      operationId="changeProfile",
      *      tags={"Store API", "Account"},
-     *      @OA\Parameter(
-     *        name="salutationId",
-     *        in="body",
-     *        description="Salutation",
-     *        @OA\Schema(type="string"),
-     *      ),
-     *      @OA\Parameter(
-     *        name="fistName",
-     *        in="body",
-     *        description="Firstname",
-     *        @OA\Schema(type="string"),
-     *      ),
-     *      @OA\Parameter(
-     *        name="lastName",
-     *        in="body",
-     *        description="Lastname",
-     *        @OA\Schema(type="string"),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              @OA\Property(property="salutationId", description="Salutation ID", type="string"),
+     *              @OA\Property(property="firstName", description="Firstname", type="string"),
+     *              @OA\Property(property="lastName", description="Firstname", type="string")
+     *          )
      *      ),
      *      @OA\Response(
      *          response="200",
-     *          @OA\JsonContent(ref="#/definitions/SuccessResponse")
+     *          description="Successfully saved",
+     *          @OA\JsonContent(ref="#/components/schemas/SuccessResponse")
      *     )
      * )
+     * @LoginRequired()
      * @Route(path="/store-api/v{version}/account/change-profile", name="store-api.account.change-profile", methods={"POST"})
      */
-    public function change(RequestDataBag $data, SalesChannelContext $context): SuccessResponse
+    public function change(RequestDataBag $data, SalesChannelContext $context, ?CustomerEntity $customer = null): SuccessResponse
     {
-        if (!$context->getCustomer()) {
-            throw new CustomerNotLoggedInException();
+        /* @deprecated tag:v6.4.0 - Parameter $customer will be mandatory when using with @LoginRequired() */
+        if (!$customer) {
+            $customer = $context->getCustomer();
         }
 
         $validation = $this->customerProfileValidationFactory->update($context);
@@ -110,25 +105,31 @@ class ChangeCustomerProfileRoute extends AbstractChangeCustomerProfileRoute
             $validation->add('company', new NotBlank());
         } else {
             $data->set('company', '');
+            $data->set('vatIds', null);
         }
 
         $this->dispatchValidationEvent($validation, $context->getContext());
 
         $this->validator->validate($data->all(), $validation);
 
-        $customer = $data->only('firstName', 'lastName', 'salutationId', 'title', 'company');
+        $customerData = $data->only('firstName', 'lastName', 'salutationId', 'title', 'company');
 
-        if ($birthday = $this->getBirthday($data)) {
-            $customer['birthday'] = $birthday;
+        if ($vatIds = $data->get('vatIds')) {
+            $customerData['vatIds'] = empty($vatIds->all()) ? null : $vatIds->all();
         }
 
-        $mappingEvent = new DataMappingEvent($data, $customer, $context->getContext());
+        if ($birthday = $this->getBirthday($data)) {
+            $customerData['birthday'] = $birthday;
+        }
+
+        $mappingEvent = new DataMappingEvent($data, $customerData, $context->getContext());
         $this->eventDispatcher->dispatch($mappingEvent, CustomerEvents::MAPPING_CUSTOMER_PROFILE_SAVE);
 
-        $customer = $mappingEvent->getOutput();
-        $customer['id'] = $context->getCustomer()->getId();
+        $customerData = $mappingEvent->getOutput();
 
-        $this->customerRepository->update([$customer], $context->getContext());
+        $customerData['id'] = $customer->getId();
+
+        $this->customerRepository->update([$customerData], $context->getContext());
 
         return new SuccessResponse();
     }

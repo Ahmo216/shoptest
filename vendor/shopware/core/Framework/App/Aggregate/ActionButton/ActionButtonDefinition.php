@@ -16,6 +16,9 @@ use Shopware\Core\Framework\DataAbstractionLayer\Field\TranslatedField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\TranslationsAssociationField;
 use Shopware\Core\Framework\DataAbstractionLayer\FieldCollection;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class ActionButtonDefinition extends EntityDefinition
 {
     public const ENTITY_NAME = 'app_action_button';
@@ -37,9 +40,12 @@ class ActionButtonDefinition extends EntityDefinition
 
     public function getDefaults(): array
     {
-        return [
-            'openNewTab' => false,
-        ];
+        return ['openNewTab' => false];
+    }
+
+    public function since(): ?string
+    {
+        return '6.3.1.0';
     }
 
     protected function defineFields(): FieldCollection

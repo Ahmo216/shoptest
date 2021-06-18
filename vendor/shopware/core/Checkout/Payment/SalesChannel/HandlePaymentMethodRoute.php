@@ -6,6 +6,7 @@ use OpenApi\Annotations as OA;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\Framework\Validation\DataValidationDefinition;
 use Shopware\Core\Framework\Validation\DataValidator;
@@ -44,36 +45,18 @@ class HandlePaymentMethodRoute extends AbstractHandlePaymentMethodRoute
     }
 
     /**
-     * @OA\Get(
+     * @Since("6.2.0.0")
+     * @OA\Post(
      *      path="/handle-payment",
-     *      description="Handles a payment for an order",
+     *      summary="Handles a payment for an order",
      *      operationId="handlePaymentMethod",
      *      tags={"Store API", "Payment Method"},
-     *      @OA\Parameter(
-     *          name="orderId",
-     *          in="post",
+     *      @OA\RequestBody(
      *          required=true,
-     *          description="The id of the order",
-     *          @OA\Schema(
-     *              type="string"
-     *          )
-     *      ),
-     *      @OA\Parameter(
-     *          name="finishUrl",
-     *          in="post",
-     *          required=false,
-     *          description="URL to which the external payment provider should redirect after successful payment",
-     *          @OA\Schema(
-     *              type="string"
-     *          )
-     *      ),
-     *      @OA\Parameter(
-     *          name="errorUrl",
-     *          in="post",
-     *          required=false,
-     *          description="URL to which the external payment provider should redirect after erroneous payment",
-     *          @OA\Schema(
-     *              type="string"
+     *          @OA\JsonContent(
+     *              @OA\Property(property="orderId", description="Order ID", type="string"),
+     *              @OA\Property(property="finishUrl", description="URL to which the external payment provider should redirect after successful payment", type="string"),
+     *              @OA\Property(property="errorUrl", description="URL to which the external payment provider should redirect after erroneous payment", type="string")
      *          )
      *      ),
      *      @OA\Response(

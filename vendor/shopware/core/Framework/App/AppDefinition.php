@@ -32,6 +32,9 @@ use Shopware\Core\Framework\Webhook\WebhookDefinition;
 use Shopware\Core\System\CustomField\Aggregate\CustomFieldSet\CustomFieldSetDefinition;
 use Shopware\Core\System\Integration\IntegrationDefinition;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class AppDefinition extends EntityDefinition
 {
     public const ENTITY_NAME = 'app';
@@ -55,7 +58,13 @@ class AppDefinition extends EntityDefinition
     {
         return [
             'active' => false,
+            'configurable' => false,
         ];
+    }
+
+    public function since(): ?string
+    {
+        return '6.3.1.0';
     }
 
     protected function defineFields(): FieldCollection
@@ -68,6 +77,7 @@ class AppDefinition extends EntityDefinition
             new StringField('copyright', 'copyright'),
             new StringField('license', 'license'),
             (new BoolField('active', 'active'))->addFlags(new Required()),
+            (new BoolField('configurable', 'configurable'))->addFlags(new Required()),
             new StringField('privacy', 'privacy'),
             (new StringField('version', 'version'))->addFlags(new Required()),
             (new BlobField('icon', 'iconRaw'))
@@ -78,12 +88,15 @@ class AppDefinition extends EntityDefinition
 
             new ListField('modules', 'modules', JsonField::class),
 
+            new ListField('cookies', 'cookies', JsonField::class),
+
             (new TranslationsAssociationField(AppTranslationDefinition::class, 'app_id'))->addFlags(
                 new Required(),
                 new CascadeDelete()
             ),
             new TranslatedField('label'),
             new TranslatedField('description'),
+            new TranslatedField('privacyPolicyExtensions'),
 
             (new FkField('integration_id', 'integrationId', IntegrationDefinition::class))->addFlags(new Required()),
             new OneToOneAssociationField('integration', 'integration_id', 'id', IntegrationDefinition::class),

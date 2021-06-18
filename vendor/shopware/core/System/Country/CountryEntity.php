@@ -61,6 +61,21 @@ class CountryEntity extends Entity
     protected $forceStateInRegistration;
 
     /**
+     * @var bool
+     */
+    protected $companyTaxFree;
+
+    /**
+     * @var bool
+     */
+    protected $checkVatIdPattern;
+
+    /**
+     * @var string|null
+     */
+    protected $vatIdPattern;
+
+    /**
      * @var CountryStateCollection|null
      */
     protected $states;
@@ -188,6 +203,36 @@ class CountryEntity extends Entity
     public function setForceStateInRegistration(bool $forceStateInRegistration): void
     {
         $this->forceStateInRegistration = $forceStateInRegistration;
+    }
+
+    public function getCompanyTaxFree(): bool
+    {
+        return $this->companyTaxFree;
+    }
+
+    public function setCompanyTaxFree(bool $companyTaxFree): void
+    {
+        $this->companyTaxFree = $companyTaxFree;
+    }
+
+    public function getCheckVatIdPattern(): bool
+    {
+        return $this->checkVatIdPattern;
+    }
+
+    public function setCheckVatIdPattern(bool $checkVatIdPattern): void
+    {
+        $this->checkVatIdPattern = $checkVatIdPattern;
+    }
+
+    public function getVatIdPattern(): ?string
+    {
+        return $this->vatIdPattern;
+    }
+
+    public function setVatIdPattern(?string $vatIdPattern): void
+    {
+        $this->vatIdPattern = $vatIdPattern;
     }
 
     public function getStates(): ?CountryStateCollection

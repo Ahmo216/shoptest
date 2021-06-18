@@ -10,7 +10,9 @@ class StorefrontPluginConfiguration
     private $themeConfig = [];
 
     /**
-     * @var string
+     * @deprecated tag:6.4.0.0 will only accept string
+     *
+     * @var string|null
      */
     private $technicalName;
 
@@ -64,11 +66,22 @@ class StorefrontPluginConfiguration
      */
     private $viewInheritance = [];
 
+    /**
+     * @deprecated tag:v6.4.0 - parameter $technicalName will be required
+     */
+    public function __construct(?string $technicalName = null)
+    {
+        $this->technicalName = $technicalName;
+    }
+
     public function getTechnicalName(): ?string
     {
         return $this->technicalName;
     }
 
+    /**
+     * @deprecated tag:v6.4.0 - Will be removed. Set name n constructor
+     */
     public function setTechnicalName(string $technicalName): void
     {
         $this->technicalName = $technicalName;
@@ -192,6 +205,6 @@ class StorefrontPluginConfiguration
 
     public function hasFilesToCompile(): bool
     {
-        return count($this->getStyleFiles()) !== 0 || count($this->getScriptFiles()) !== 0;
+        return \count($this->getStyleFiles()) !== 0 || \count($this->getScriptFiles()) !== 0;
     }
 }

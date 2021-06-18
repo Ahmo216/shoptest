@@ -16,6 +16,8 @@
         <service id="Shopware\Core\System\SystemConfig\Service\ConfigurationService">
             <argument type="service" id="kernel.bundles" />
             <argument type="service" id="Shopware\Core\System\SystemConfig\Util\ConfigReader"/>
+            <argument type="service" id="Shopware\Core\Framework\App\Lifecycle\AppLoader"/>
+            <argument type="service" id="app.repository"/>
         </service>
 
         <service id="Shopware\Core\System\SystemConfig\Util\ConfigReader"/>
@@ -29,6 +31,7 @@
             <argument type="service" id="Doctrine\DBAL\Connection"/>
             <argument type="service" id="system_config.repository"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\Util\ConfigReader" />
+            <argument type="service" id="plugin.repository"/>
         </service>
 
         <service id="Shopware\Core\System\SystemConfig\Command\ConfigGet">

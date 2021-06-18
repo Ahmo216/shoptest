@@ -173,7 +173,10 @@ Component.register('sw-search-bar', {
             this.isActive = true;
             if (!this.searchTerm) {
                 this.showTypeContainer();
-            } else {
+            } else if (
+                this.currentSearchType !== this.initialSearchType ||
+                this.currentSearchType.length <= 0
+            ) {
                 this.showResultsContainer = true;
             }
         },
@@ -367,7 +370,7 @@ Component.register('sw-search-bar', {
             }
 
             if (this.activeResultColumn > 0) {
-                this.activeResultColumn = this.activeResultColumn - 1;
+                this.activeResultColumn -= 1;
                 const itemsInColumn = this.results[this.activeResultColumn].entities.length;
                 if (this.activeResultIndex + 1 > itemsInColumn) {
                     this.activeResultIndex = itemsInColumn - 1;
@@ -390,7 +393,7 @@ Component.register('sw-search-bar', {
             }
 
             if (this.activeResultColumn < this.results.length - 1) {
-                this.activeResultColumn = this.activeResultColumn + 1;
+                this.activeResultColumn += 1;
                 const itemsInColumn = this.results[this.activeResultColumn].entities.length;
                 if (this.activeResultIndex + 1 > itemsInColumn) {
                     this.activeResultIndex = itemsInColumn - 1;
@@ -414,7 +417,7 @@ Component.register('sw-search-bar', {
 
             if (this.activeResultIndex === 0) {
                 if (this.activeResultColumn > 0) {
-                    this.activeResultColumn = this.activeResultColumn - 1;
+                    this.activeResultColumn -= 1;
                     const itemsInNewColumn = Object.keys(this.results[this.activeResultColumn].entities).length;
                     this.activeResultIndex = itemsInNewColumn - 1;
                 }
@@ -443,7 +446,7 @@ Component.register('sw-search-bar', {
                 if (this.activeResultColumn < this.results.length - 1) {
                     // Move to the next column if it exists
                     if (this.results[this.activeResultColumn + 1]) {
-                        this.activeResultColumn = this.activeResultColumn + 1;
+                        this.activeResultColumn += 1;
                         this.activeResultIndex = 0;
                     } else {
                         return;

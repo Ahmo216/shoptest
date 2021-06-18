@@ -1,3 +1,27 @@
+### [1.10.20] 2021-01-27
+
+  * Fixed exclude-from-classmap causing regex issues when having too many paths
+  * Fixed compatibility issue with Symfony 4/5
+
+### [1.10.19] 2020-12-04
+
+  * Fixed regression on PHP 8.0
+
+### [1.10.18] 2020-12-03
+
+  * Allow installation on PHP 8.0
+
+### [1.10.17] 2020-10-30
+
+  * Fixed Bitbucket API authentication issue
+  * Fixed parsing of Composer 2 lock files breaking in some rare conditions
+
+### [1.10.16] 2020-10-24
+
+  * Added warning to `validate` command for cases where packages provide/replace a package that they also require
+  * Fixed JSON schema validation issue with PHPStorm
+  * Fixed symlink handling in `archive` command
+
 ### [1.10.15] 2020-10-13
 
   * Fixed path repo version guessing issue
@@ -905,6 +929,11 @@
 
   * Initial release
 
+[1.10.20]: https://github.com/composer/composer/compare/1.10.19...1.10.20
+[1.10.19]: https://github.com/composer/composer/compare/1.10.18...1.10.19
+[1.10.18]: https://github.com/composer/composer/compare/1.10.17...1.10.18
+[1.10.17]: https://github.com/composer/composer/compare/1.10.16...1.10.17
+[1.10.16]: https://github.com/composer/composer/compare/1.10.15...1.10.16
 [1.10.15]: https://github.com/composer/composer/compare/1.10.14...1.10.15
 [1.10.14]: https://github.com/composer/composer/compare/1.10.13...1.10.14
 [1.10.13]: https://github.com/composer/composer/compare/1.10.12...1.10.13

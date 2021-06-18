@@ -10,6 +10,9 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Webhook\WebhookCollection;
 use Shopware\Core\Framework\Webhook\WebhookEntity;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class WebhookPersister
 {
     /**
@@ -22,7 +25,7 @@ class WebhookPersister
         $this->webhookRepository = $webhookRepository;
     }
 
-    public function updateWebhooks(Manifest $manifest, string $appId, Context $context): void
+    public function updateWebhooks(Manifest $manifest, string $appId, string $defaultLocale, Context $context): void
     {
         $existingWebhooks = $this->getExistingWebhooks($appId, $context);
 
@@ -30,7 +33,7 @@ class WebhookPersister
         $upserts = [];
 
         foreach ($webhooks as $webhook) {
-            $payload = $webhook->toArray();
+            $payload = $webhook->toArray($defaultLocale);
             $payload['appId'] = $appId;
             $payload['eventName'] = $webhook->getEvent();
 

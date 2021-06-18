@@ -2,8 +2,10 @@
 
 namespace Shopware\Core\System\SystemConfig\Api;
 
+use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Routing\Annotation\Acl;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Routing\Exception\MissingRequestParameterException;
 use Shopware\Core\System\SystemConfig\Service\ConfigurationService;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
@@ -35,10 +37,11 @@ class SystemConfigController extends AbstractController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/system-config/check", name="api.action.core.system-config.check", methods={"GET"})
      * @Acl({"system_config:read"})
      */
-    public function checkConfiguration(Request $request): JsonResponse
+    public function checkConfiguration(Request $request, Context $context): JsonResponse
     {
         $domain = $request->query->get('domain');
 
@@ -46,15 +49,16 @@ class SystemConfigController extends AbstractController
             return new JsonResponse(false);
         }
 
-        return new JsonResponse($this->configurationService->checkConfiguration($domain));
+        return new JsonResponse($this->configurationService->checkConfiguration($domain, $context));
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/system-config/schema", name="api.action.core.system-config", methods={"GET"})
      *
      * @throws MissingRequestParameterException
      */
-    public function getConfiguration(Request $request): JsonResponse
+    public function getConfiguration(Request $request, Context $context): JsonResponse
     {
         $domain = $request->query->get('domain');
 
@@ -62,10 +66,11 @@ class SystemConfigController extends AbstractController
             throw new MissingRequestParameterException('domain');
         }
 
-        return new JsonResponse($this->configurationService->getConfiguration($domain));
+        return new JsonResponse($this->configurationService->getConfiguration($domain, $context));
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/system-config", name="api.action.core.system-config.value", methods={"GET"})
      * @Acl({"system_config:read"})
      */
@@ -82,13 +87,14 @@ class SystemConfigController extends AbstractController
         if (empty($values)) {
             $json = '{}';
         } else {
-            $json = json_encode($values, JSON_PRESERVE_ZERO_FRACTION);
+            $json = json_encode($values, \JSON_PRESERVE_ZERO_FRACTION);
         }
 
         return new JsonResponse($json, 200, [], true);
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/system-config", name="api.action.core.save.system-config", methods={"POST"})
      * @Acl({"system_config:update", "system_config:create", "system_config:delete"})
      */
@@ -102,6 +108,7 @@ class SystemConfigController extends AbstractController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/system-config/batch", name="api.action.core.save.system-config.batch", methods={"POST"})
      * @Acl({"system_config:update", "system_config:create", "system_config:delete"})
      */

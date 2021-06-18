@@ -6,10 +6,13 @@ use OpenApi\Annotations as OA;
 use Shopware\Core\Checkout\Cart\Cart;
 use Shopware\Core\Checkout\Cart\CartCalculator;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
+use Shopware\Core\Checkout\Cart\Event\AfterLineItemRemovedEvent;
+use Shopware\Core\Checkout\Cart\Event\BeforeLineItemRemovedEvent;
 use Shopware\Core\Checkout\Cart\Event\LineItemRemovedEvent;
 use Shopware\Core\Checkout\Cart\Exception\LineItemNotFoundException;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -48,16 +51,17 @@ class CartItemRemoveRoute extends AbstractCartItemRemoveRoute
     }
 
     /**
+     * @Since("6.3.0.0")
      * @OA\Delete(
      *      path="/checkout/cart/line-item",
-     *      description="Remove line item entries",
+     *      summary="Remove line item entries",
      *      operationId="removeLineItem",
      *      tags={"Store API", "Cart"},
-     *      @OA\RequestBody(@OA\JsonContent(ref="#/definitions/CartItemsDelete")),
+     *      @OA\RequestBody(@OA\JsonContent(ref="#/components/schemas/CartItemsDelete")),
      *      @OA\Response(
      *          response="200",
      *          description="Cart",
-     *          @OA\JsonContent(ref="#/definitions/Cart")
+     *          @OA\JsonContent(ref="#/components/schemas/Cart")
      *     )
      * )
      * @Route("/store-api/v{version}/checkout/cart/line-item", name="store-api.checkout.cart.remove-item", methods={"DELETE"})
@@ -65,9 +69,11 @@ class CartItemRemoveRoute extends AbstractCartItemRemoveRoute
     public function remove(Request $request, Cart $cart, SalesChannelContext $context): CartResponse
     {
         $ids = $request->get('ids');
+        $lineItems = [];
 
         foreach ($ids as $id) {
             $lineItem = $cart->get($id);
+            $lineItems[] = $lineItem;
 
             if (!$lineItem) {
                 throw new LineItemNotFoundException($id);
@@ -75,13 +81,17 @@ class CartItemRemoveRoute extends AbstractCartItemRemoveRoute
 
             $cart->remove($id);
 
+            /* @deprecated tag:v6.4.0 - The LineItemRemovedEvent will be removed in the future, please use the BeforeLineItemRemovedEvent and AfterLineItemRemovedEvent variants of this event going forward */
             $this->eventDispatcher->dispatch(new LineItemRemovedEvent($lineItem, $cart, $context));
+            $this->eventDispatcher->dispatch(new BeforeLineItemRemovedEvent($lineItem, $cart, $context));
 
             $cart->markModified();
         }
 
         $cart = $this->cartCalculator->calculate($cart, $context);
         $this->cartPersister->save($cart, $context);
+
+        $this->eventDispatcher->dispatch(new AfterLineItemRemovedEvent($lineItems, $cart, $context));
 
         return new CartResponse($cart);
     }

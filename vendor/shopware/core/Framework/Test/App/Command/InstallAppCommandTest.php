@@ -5,6 +5,7 @@ namespace Shopware\Core\Framework\Test\App\Command;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\App\Command\AppPrinter;
 use Shopware\Core\Framework\App\Command\InstallAppCommand;
+use Shopware\Core\Framework\App\Command\ValidateAppCommand;
 use Shopware\Core\Framework\App\Lifecycle\AppLifecycle;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Test\App\StorefrontPluginRegistryTestBehaviour;
@@ -112,12 +113,46 @@ class InstallAppCommandTest extends TestCase
         static::assertStringContainsString('[ERROR] No app with name "Test" found.', $commandTester->getDisplay());
     }
 
+    public function testInstallFailsIfAppIsAlreadyInstalled(): void
+    {
+        $commandTester = new CommandTester($this->createCommand(__DIR__ . '/_fixtures'));
+        $commandTester->setInputs(['yes']);
+
+        $commandTester->execute(['name' => 'withoutPermissions']);
+        static::assertEquals(0, $commandTester->getStatusCode());
+
+        $commandTester->execute(['name' => 'withoutPermissions']);
+        static::assertEquals(1, $commandTester->getStatusCode());
+        static::assertStringContainsString('[ERROR] App with name "withoutPermissions" is already installed.', $commandTester->getDisplay());
+    }
+
+    public function testInstallFailsIfAppHasValidations(): void
+    {
+        $commandTester = new CommandTester($this->createCommand(__DIR__ . '/../Manifest/_fixtures'));
+        $commandTester->setInputs(['yes']);
+        $commandTester->execute(['name' => 'invalidWebhooks']);
+
+        static::assertEquals(1, $commandTester->getStatusCode());
+        static::assertStringContainsString('[ERROR] The app "invalidWebhooks" is invalid:', $commandTester->getDisplay());
+    }
+
+    public function testInstallInvalidAppWithNoValidate(): void
+    {
+        $commandTester = new CommandTester($this->createCommand(__DIR__ . '/../Manifest/_fixtures'));
+        $commandTester->setInputs(['yes']);
+        $commandTester->execute(['name' => 'invalidWebhooks', '--no-validate' => true]);
+
+        static::assertEquals(0, $commandTester->getStatusCode());
+        static::assertStringContainsString('[OK] App installed successfully.', $commandTester->getDisplay());
+    }
+
     private function createCommand(string $appFolder): InstallAppCommand
     {
         return new InstallAppCommand(
             $appFolder,
             $this->getContainer()->get(AppLifecycle::class),
-            new AppPrinter($this->appRepository)
+            new AppPrinter($this->appRepository),
+            $this->getContainer()->get(ValidateAppCommand::class)
         );
     }
 }

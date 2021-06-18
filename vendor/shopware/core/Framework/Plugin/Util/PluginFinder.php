@@ -14,7 +14,7 @@ use Symfony\Component\Finder\Finder;
 
 class PluginFinder
 {
-    private const COMPOSER_TYPE = 'shopware-platform-plugin';
+    public const COMPOSER_TYPE = 'shopware-platform-plugin';
     private const SHOPWARE_PLUGIN_CLASS_EXTRA_IDENTIFIER = 'shopware-plugin-class';
 
     /**
@@ -37,8 +37,8 @@ class PluginFinder
         IOInterface $composerIO
     ): array {
         return array_merge(
-            $this->loadLocalPlugins($pluginDir, $composerIO, $errors),
-            $this->loadVendorInstalledPlugins($projectDir, $composerIO, $errors)
+            $this->loadVendorInstalledPlugins($projectDir, $composerIO, $errors),
+            $this->loadLocalPlugins($pluginDir, $composerIO, $errors)
         );
     }
 
@@ -90,7 +90,8 @@ class PluginFinder
     private function isPluginComposerValid(CompletePackageInterface $package): bool
     {
         return isset($package->getExtra()[self::SHOPWARE_PLUGIN_CLASS_EXTRA_IDENTIFIER])
-            && $package->getExtra()[self::SHOPWARE_PLUGIN_CLASS_EXTRA_IDENTIFIER] !== '';
+            && $package->getExtra()[self::SHOPWARE_PLUGIN_CLASS_EXTRA_IDENTIFIER] !== ''
+            && !empty($package->getExtra()['label']);
     }
 
     private function getPluginNameFromPackage(CompletePackageInterface $pluginPackage): string
@@ -147,7 +148,7 @@ class PluginFinder
             $pluginPath . '/composer.json',
             [
                 sprintf(
-                    'Plugin composer.json has invalid "type" (must be "%s"), or invalid "extra/%s" value',
+                    'Plugin composer.json has invalid "type" (must be "%s"), or invalid "extra/%s" value, or missing extra.label property',
                     self::COMPOSER_TYPE,
                     self::SHOPWARE_PLUGIN_CLASS_EXTRA_IDENTIFIER
                 ),

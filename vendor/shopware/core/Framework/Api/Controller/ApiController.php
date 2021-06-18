@@ -26,6 +26,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityTranslationDefinition;
 use Shopware\Core\Framework\DataAbstractionLayer\Event\EntityWrittenContainerEvent;
 use Shopware\Core\Framework\DataAbstractionLayer\Exception\DefinitionNotFoundException;
+use Shopware\Core\Framework\DataAbstractionLayer\Exception\MissingReverseAssociation;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\AssociationField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\Field;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\ManyToManyAssociationField;
@@ -42,6 +43,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\IdSearchResult;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\RequestCriteriaBuilder;
 use Shopware\Core\Framework\DataAbstractionLayer\Write\CloneBehavior;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Uuid\Exception\InvalidUuidException;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\PlatformRequest;
@@ -121,9 +123,10 @@ class ApiController extends AbstractController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @OA\Get(
      *      path="/_search",
-     *      description="Search for multiple entites by a given term",
+     *      summary="Search for multiple entites by a given term",
      *      operationId="compositeSearch",
      *      tags={"Admin Api"},
      *      @OA\Parameter(
@@ -198,6 +201,7 @@ class ApiController extends AbstractController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/clone/{entity}/{id}", name="api.clone", methods={"POST"}, requirements={
      *     "version"="\d+", "entity"="[a-zA-Z-]+", "id"="[0-9a-f]{32}"
      * })
@@ -239,6 +243,7 @@ class ApiController extends AbstractController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/version/{entity}/{id}", name="api.createVersion", methods={"POST"},
      *     requirements={"version"="\d+", "entity"="[a-zA-Z-]+", "id"="[0-9a-f]{32}"
      * })
@@ -281,6 +286,7 @@ class ApiController extends AbstractController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/version/merge/{entity}/{versionId}", name="api.mergeVersion", methods={"POST"},
      *     requirements={"version"="\d+", "entity"="[a-zA-Z-]+", "versionId"="[0-9a-f]{32}"
      * })
@@ -308,6 +314,7 @@ class ApiController extends AbstractController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/version/{versionId}/{entity}/{entityId}", name="api.deleteVersion", methods={"POST"},
      *     requirements={"version"="\d+", "entity"="[a-zA-Z-]+", "id"="[0-9a-f]{32}"
      * })
@@ -606,6 +613,9 @@ class ApiController extends AbstractController
 
             //contains now the inverse side association: category.products
             $reverse = $reverse->first();
+            if (!$reverse) {
+                throw new MissingReverseAssociation($definition->getEntityName(), $parentDefinition);
+            }
 
             /* @var ManyToManyAssociationField $reverse */
             $criteria->addFilter(
@@ -653,10 +663,13 @@ class ApiController extends AbstractController
             //get inverse association to filter to parent value
             $reverse = $definition->getFields()->filter(
                 function (Field $field) use ($parentDefinition) {
-                    return $field instanceof OneToManyAssociationField && $parentDefinition === $field->getReferenceDefinition();
+                    return $field instanceof AssociationField && $parentDefinition === $field->getReferenceDefinition();
                 }
             );
             $reverse = $reverse->first();
+            if (!$reverse) {
+                throw new MissingReverseAssociation($definition->getEntityName(), $parentDefinition);
+            }
 
             /* @var OneToManyAssociationField $reverse */
             $criteria->addFilter(
@@ -680,6 +693,9 @@ class ApiController extends AbstractController
                 }
             );
             $reverse = $reverse->first();
+            if (!$reverse) {
+                throw new MissingReverseAssociation($definition->getEntityName(), $parentDefinition);
+            }
 
             /* @var OneToManyAssociationField $reverse */
             $criteria->addFilter(
@@ -848,7 +864,7 @@ class ApiController extends AbstractController
         $reference = $manyToManyAssociation->getToManyReferenceDefinition();
 
         // check if we need to create the entity first
-        if (\count($payload) > 1 || !array_key_exists('id', $payload)) {
+        if (\count($payload) > 1 || !\array_key_exists('id', $payload)) {
             $events = $this->executeWriteOperation($reference, $payload, $context, $type, $request->attributes->getInt('version'));
             $event = $events->getEventByEntityName($reference->getEntityName());
 

@@ -3,10 +3,11 @@
 namespace Shopware\Core\System\SalesChannel\Context;
 
 use Doctrine\DBAL\Connection;
-use Shopware\Core\Framework\Feature;
+use Doctrine\DBAL\Driver\ResultStatement;
 use Shopware\Core\Framework\Util\Random;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\SalesChannel\Event\SalesChannelContextTokenChangeEvent;
+use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class SalesChannelContextPersister
@@ -27,36 +28,24 @@ class SalesChannelContextPersister
         $this->eventDispatcher = $eventDispatcher;
     }
 
-    public function save(string $token, array $parameters, ?string $customerId = null): void
+    /*
+     * @deprecated tag:v6.4.0 - $salesChannelId will be required
+     */
+    public function save(string $token, array $parameters, ?string $salesChannelId = null, ?string $customerId = null): void
     {
-        if (Feature::isActive('FEATURE_NEXT_10058')) {
-            $existing = $this->load($token, $customerId);
-
-            $parameters = array_replace_recursive($existing, $parameters);
-
-            unset($parameters['token']);
-
-            $this->connection->executeUpdate(
-                'REPLACE INTO sales_channel_api_context (`token`, `payload`, `customer_id`) VALUES (:token, :payload, :customerId)',
-                [
-                    'token' => $token,
-                    'payload' => json_encode($parameters),
-                    'customerId' => $customerId ? Uuid::fromHexToBytes($customerId) : null,
-                ]
-            );
-
-            return;
-        }
-
-        $existing = $this->load($token);
+        $existing = $this->load($token, $salesChannelId, $customerId);
 
         $parameters = array_replace_recursive($existing, $parameters);
 
+        unset($parameters['token']);
+
         $this->connection->executeUpdate(
-            'REPLACE INTO sales_channel_api_context (`token`, `payload`) VALUES (:token, :payload)',
+            'REPLACE INTO sales_channel_api_context (`token`, `payload`, `sales_channel_id`, `customer_id`) VALUES (:token, :payload, :salesChannelId, :customerId)',
             [
                 'token' => $token,
                 'payload' => json_encode($parameters),
+                'salesChannelId' => $salesChannelId ? Uuid::fromHexToBytes($salesChannelId) : null,
+                'customerId' => $customerId ? Uuid::fromHexToBytes($customerId) : null,
             ]
         );
     }
@@ -85,7 +74,19 @@ class SalesChannelContextPersister
             ]
         );
 
-        if ($affected === 0) {
+        if ($affected === 0 && \func_num_args() === 2) {
+            /** @var SalesChannelContext $context */
+            $context = func_get_arg(1);
+
+            $customer = $context->getCustomer();
+
+            $this->connection->insert('sales_channel_api_context', [
+                'token' => $newToken,
+                'payload' => json_encode([]),
+                'sales_channel_id' => Uuid::fromHexToBytes($context->getSalesChannel()->getId()),
+                'customer_id' => $customer ? Uuid::fromHexToBytes($customer->getId()) : null,
+            ]);
+        } elseif ($affected === 0) {
             $this->connection->insert('sales_channel_api_context', [
                 'token' => $newToken,
                 'payload' => json_encode([]),
@@ -103,7 +104,7 @@ class SalesChannelContextPersister
         );
 
         // @deprecated tag:v6.4.0.0 - $context will be required
-        if (func_num_args() === 2) {
+        if (\func_num_args() === 2) {
             $context = func_get_arg(1);
             $context->assign(['token' => $newToken]);
             $this->eventDispatcher->dispatch(new SalesChannelContextTokenChangeEvent($context, $oldToken, $newToken));
@@ -112,42 +113,60 @@ class SalesChannelContextPersister
         return $newToken;
     }
 
-    public function load(string $token/*, ?string $customerId* = null*/): array
+    /*
+     * @deprecated tag:v6.4.0 - $salesChannelId will be required
+    */
+    public function load(string $token, ?string $salesChannelId = null, ?string $customerId = null): array
     {
-        if (Feature::isActive('FEATURE_NEXT_10058')) {
-            if (func_num_args() === 2) {
-                $customerId = func_get_arg(1);
+        $qb = $this->connection->createQueryBuilder();
 
-                $data = $this->connection->fetchAll('SELECT * FROM sales_channel_api_context WHERE customer_id = :customerId OR token = :token LIMIT 2', [
-                    'customerId' => $customerId ? Uuid::fromHexToBytes($customerId) : null,
-                    'token' => $token,
-                ]);
+        $qb->select('*');
+        $qb->from('sales_channel_api_context');
 
-                if (empty($data)) {
-                    return [];
-                }
+        if ($salesChannelId !== null) {
+            $qb->where('sales_channel_id = :salesChannelId');
+            $qb->setParameter(':salesChannelId', Uuid::fromHexToBytes($salesChannelId));
 
-                $customerContext = $customerId ? $this->getCustomerContext($data, $customerId) : null;
-
-                $context = $customerContext ?? array_shift($data);
-
-                $payload = array_filter(json_decode($context['payload'], true));
-                $payload['token'] = $context['token'];
-
-                return $payload;
+            if ($customerId !== null) {
+                $qb->andWhere('token = :token OR customer_id = :customerId');
+                $qb->setParameter(':token', $token);
+                $qb->setParameter(':customerId', Uuid::fromHexToBytes($customerId));
+                $qb->setMaxResults(2);
+            } else {
+                $qb->andWhere('token = :token');
+                $qb->setParameter(':token', $token);
+                $qb->setMaxResults(1);
             }
+        } else {
+            $qb->where('token = :token');
+            $qb->setParameter(':token', $token);
+            $qb->setMaxResults(1);
         }
 
-        $parameter = $this->connection->fetchColumn(
-            'SELECT `payload` FROM sales_channel_api_context WHERE token = :token',
-            ['token' => $token]
-        );
+        /** @var ResultStatement $statement */
+        $statement = $qb->execute();
 
-        if (!$parameter) {
+        if (!$statement instanceof ResultStatement) {
             return [];
         }
 
-        return array_filter(json_decode($parameter, true));
+        $data = $statement->fetchAll();
+
+        if (empty($data)) {
+            return [];
+        }
+
+        $customerContext = $salesChannelId && $customerId ? $this->getCustomerContext($data, $salesChannelId, $customerId) : null;
+
+        $context = $customerContext ?? array_shift($data);
+
+        $payload = array_filter(json_decode($context['payload'], true));
+
+        if ($customerId) {
+            $payload['token'] = $context['token'];
+        }
+
+        return $payload;
     }
 
     public function revokeAllCustomerTokens(string $customerId, string ...$preserveTokens): void
@@ -162,14 +181,11 @@ class SalesChannelContextPersister
         $qb
             ->update('sales_channel_api_context')
             ->set('payload', ':payload')
+            ->set('customer_id', 'NULL')
             ->where('JSON_EXTRACT(payload, :customerPath) = :customerId')
             ->setParameter(':payload', json_encode($revokeParams))
             ->setParameter(':customerPath', '$.customerId')
             ->setParameter(':customerId', $customerId);
-
-        if (Feature::isActive('FEATURE_NEXT_10058')) {
-            $qb->set('customer_id', 'NULL');
-        }
 
         // keep tokens valid, which are given in $preserveTokens
         if ($preserveTokens) {
@@ -181,10 +197,13 @@ class SalesChannelContextPersister
         $qb->execute();
     }
 
-    private function getCustomerContext(array $data, string $customerId): ?array
+    private function getCustomerContext(array $data, string $salesChannelId, string $customerId): ?array
     {
         foreach ($data as $row) {
-            if (!empty($row['customer_id']) && Uuid::fromBytesToHex($row['customer_id']) === $customerId) {
+            if (!empty($row['customer_id'])
+                && Uuid::fromBytesToHex($row['sales_channel_id']) === $salesChannelId
+                && Uuid::fromBytesToHex($row['customer_id']) === $customerId
+            ) {
                 return $row;
             }
         }

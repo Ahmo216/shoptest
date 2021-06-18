@@ -2,6 +2,7 @@ import template from './sw-cms-sidebar.html.twig';
 import './sw-cms-sidebar.scss';
 
 const { Component, Mixin } = Shopware;
+const { Criteria } = Shopware.Data;
 const { cloneDeep } = Shopware.Utils.object;
 const types = Shopware.Utils.types;
 
@@ -11,7 +12,8 @@ Component.register('sw-cms-sidebar', {
 
     inject: [
         'cmsService',
-        'repositoryFactory'
+        'repositoryFactory',
+        'feature'
     ],
 
     mixins: [
@@ -87,6 +89,36 @@ Component.register('sw-cms-sidebar', {
             }
 
             return this.$tc('sw-cms.detail.sidebar.titleSectionSettings');
+        },
+
+        tooltipDisabled() {
+            return {
+                message: this.$tc('sw-cms.detail.tooltip.cannotSelectProductPageLayout'),
+                disabled: this.page.type !== 'product_detail'
+            };
+        },
+
+        demoCriteria() {
+            if (this.demoEntity === 'product') {
+                const criteria = new Criteria();
+                criteria.addAssociation('options.group');
+
+                return criteria;
+            }
+
+            return new Criteria();
+        },
+
+        demoContext() {
+            if (this.demoEntity === 'product') {
+                return { ...Shopware.Context.api, inheritance: true };
+            }
+
+            return Shopware.Context.api;
+        },
+
+        blockTypes() {
+            return Object.keys(this.cmsBlocks);
         }
     },
 
@@ -184,7 +216,6 @@ Component.register('sw-cms-sidebar', {
             const newBlock = this.blockRepository.create();
 
             const blockClone = cloneDeep(block);
-            blockClone.id = newBlock.id;
             blockClone.position = block.position + 1;
             blockClone.sectionId = sectionId;
             blockClone.sectionPosition = block.sectionPosition;
@@ -198,8 +229,9 @@ Component.register('sw-cms-sidebar', {
         },
 
         cloneSlotsInBlock(block, newBlock) {
-            block.slots.forEach((slot) => {
+            block.slots.forEach(slot => {
                 const element = this.slotRepository.create();
+                element.id = slot.id;
                 element.blockId = newBlock.id;
                 element.slot = slot.slot;
                 element.type = slot.type;
@@ -365,15 +397,23 @@ Component.register('sw-cms-sidebar', {
         },
 
         getMainContentBlocks(sectionBlocks) {
-            return sectionBlocks.filter((block) => block.sectionPosition === 'main');
+            return sectionBlocks.filter((block) => this.blockTypeExists(block.type) && block.sectionPosition === 'main');
         },
 
         getSidebarContentBlocks(sectionBlocks) {
-            return sectionBlocks.filter((block) => block.sectionPosition === 'sidebar');
+            return sectionBlocks.filter((block) => this.blockTypeExists(block.type) && block.sectionPosition === 'sidebar');
         },
 
         pageUpdate() {
             this.$emit('page-update');
+        },
+
+        onOpenLayoutAssignment() {
+            this.$emit('open-layout-assignment');
+        },
+
+        blockTypeExists(type) {
+            return this.blockTypes.includes(type);
         }
     }
 });

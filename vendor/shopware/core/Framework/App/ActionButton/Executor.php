@@ -8,6 +8,9 @@ use Psr\Log\LoggerInterface;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Uuid\Uuid;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class Executor
 {
     /**
@@ -42,7 +45,7 @@ class Executor
                     'headers' => [
                         'shopware-shop-signature' => hash_hmac(
                             'sha256',
-                            (string) \json_encode($payload),
+                            (string) json_encode($payload),
                             $action->getAppSecret()
                         ),
                     ],

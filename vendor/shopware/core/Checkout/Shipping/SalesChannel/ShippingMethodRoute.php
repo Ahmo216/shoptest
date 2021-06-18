@@ -10,6 +10,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\RequestCriteriaBuilder;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\Entity;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepositoryInterface;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Request;
@@ -51,19 +52,19 @@ class ShippingMethodRoute extends AbstractShippingMethodRoute
     }
 
     /**
+     * @Since("6.2.0.0")
      * @Entity("shipping_method")
-     * @OA\Get(
+     * @OA\Post(
      *      path="/shipping-method",
-     *      description="Loads all available shipping methods",
+     *      summary="Loads all available shipping methods",
      *      operationId="readShippingMethod",
      *      tags={"Store API", "Shipping Method"},
      *      @OA\Parameter(name="Api-Basic-Parameters"),
-     *      @OA\Parameter(
-     *          parameter="onlyAvailable",
-     *          name="onlyAvailable",
-     *          in="query",
-     *          description="Encoded SwagQL in JSON",
-     *          @OA\Schema(type="int")
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              @OA\Property(property="onlyAvailable", description="List only available", type="boolean")
+     *          )
      *      ),
      *      @OA\Response(
      *          response="200",

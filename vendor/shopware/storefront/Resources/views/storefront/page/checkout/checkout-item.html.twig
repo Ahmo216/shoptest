@@ -141,8 +141,19 @@
                                                         </div>
                                                     {% endif %}
                                                 {% endblock %}
+
+                                                {% if shopware.config.core.cart.wishlistEnabled and lineItem.type == 'product' %}
+                                                    {% block page_checkout_item_wishlist %}
+                                                        {% sw_include '@Storefront/storefront/component/product/card/wishlist.html.twig' with {
+                                                            showText: true,
+                                                            size: 'sm',
+                                                            productId: lineItem.referencedId
+                                                        } %}
+                                                    {% endblock %}
+                                                {% endif %}
                                             </div>
                                         {% endblock %}
+
                                     </div>
                                 {% endblock %}
                             </div>
@@ -162,7 +173,7 @@
                             {% block page_checkout_item_quantity_select %}
                                 <div class="col-4 col-sm-12">
                                     {% block page_checkout_item_quantity_form %}
-                                        {% if lineItem.quantityInformation and lineItem.stackable %}
+                                        {% if lineItem.quantityInformation and lineItem.stackable and not isChild %}
                                             <form action="{{ path('frontend.checkout.line-item.change-quantity', {'id': lineItem.id}) }}"
                                                   class="cart-item-quantity-container"
                                                   method="post"
@@ -198,7 +209,7 @@
                                                     </select>
                                                 {% endblock %}
                                             </form>
-                                        {% else %}
+                                        {% elseif lineItem.type != "promotion" %}
                                             {% block page_checkout_item_quantity_number %}
                                                 <div class="d-flex justify-content-end cart-item-quantity">
                                                     {{ lineItem.quantity }}

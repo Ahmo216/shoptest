@@ -2,6 +2,7 @@
 
 namespace Shopware\Core\System\User;
 
+use Shopware\Core\Checkout\Order\OrderCollection;
 use Shopware\Core\Content\ImportExport\Aggregate\ImportExportLog\ImportExportLogCollection;
 use Shopware\Core\Content\Media\MediaCollection;
 use Shopware\Core\Content\Media\MediaEntity;
@@ -11,6 +12,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityIdTrait;
 use Shopware\Core\System\Locale\LocaleEntity;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineHistory\StateMachineHistoryCollection;
 use Shopware\Core\System\User\Aggregate\UserAccessKey\UserAccessKeyCollection;
+use Shopware\Core\System\User\Aggregate\UserConfig\UserConfigCollection;
 use Shopware\Core\System\User\Aggregate\UserRecovery\UserRecoveryEntity;
 
 class UserEntity extends Entity
@@ -93,6 +95,11 @@ class UserEntity extends Entity
     protected $accessKeys;
 
     /**
+     * @var UserConfigCollection|null
+     */
+    protected $configs;
+
+    /**
      * @var StateMachineHistoryCollection|null
      */
     protected $stateMachineHistoryEntries;
@@ -113,9 +120,24 @@ class UserEntity extends Entity
     protected $storeToken;
 
     /**
+     * @var \DateTimeInterface|null
+     */
+    protected $lastUpdatedPasswordAt;
+
+    /**
      * @var array|null
      */
     protected $customFields;
+
+    /**
+     * @var OrderCollection|null
+     */
+    protected $createdOrders;
+
+    /**
+     * @var OrderCollection|null
+     */
+    protected $updatedOrders;
 
     public function getStateMachineHistoryEntries(): ?StateMachineHistoryCollection
     {
@@ -257,6 +279,16 @@ class UserEntity extends Entity
         $this->accessKeys = $accessKeys;
     }
 
+    public function getConfigs(): ?UserConfigCollection
+    {
+        return $this->configs;
+    }
+
+    public function setConfigs(UserConfigCollection $configs): void
+    {
+        $this->configs = $configs;
+    }
+
     public function getCustomFields(): ?array
     {
         return $this->customFields;
@@ -315,5 +347,35 @@ class UserEntity extends Entity
     public function setTitle(?string $title): void
     {
         $this->title = $title;
+    }
+
+    public function getCreatedOrders(): ?OrderCollection
+    {
+        return $this->createdOrders;
+    }
+
+    public function setCreatedOrders(OrderCollection $createdOrders): void
+    {
+        $this->createdOrders = $createdOrders;
+    }
+
+    public function getUpdatedOrders(): ?OrderCollection
+    {
+        return $this->updatedOrders;
+    }
+
+    public function setUpdatedOrders(OrderCollection $updatedOrders): void
+    {
+        $this->updatedOrders = $updatedOrders;
+    }
+
+    public function getLastUpdatedPasswordAt(): ?\DateTimeInterface
+    {
+        return $this->lastUpdatedPasswordAt;
+    }
+
+    public function setLastUpdatedPasswordAt(\DateTimeInterface $lastUpdatedPasswordAt): void
+    {
+        $this->lastUpdatedPasswordAt = $lastUpdatedPasswordAt;
     }
 }

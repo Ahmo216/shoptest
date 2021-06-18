@@ -2,17 +2,28 @@
 
 namespace Shopware\Core\Framework\App\Manifest\Xml;
 
+use Shopware\Core\Framework\App\Validation\Error\MissingTranslationError;
+
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class Metadata extends XmlElement
 {
-    /**
-     * @var array
-     */
-    protected $label;
+    public const TRANSLATABLE_FIELDS = [
+        'label',
+        'description',
+        'privacyPolicyExtensions',
+    ];
 
     /**
      * @var array
      */
-    protected $description;
+    protected $label = [];
+
+    /**
+     * @var array
+     */
+    protected $description = [];
 
     /**
      * @var string
@@ -49,6 +60,11 @@ class Metadata extends XmlElement
      */
     protected $privacy;
 
+    /**
+     * @var array
+     */
+    protected $privacyPolicyExtensions = [];
+
     private function __construct(array $data)
     {
         foreach ($data as $property => $value) {
@@ -59,6 +75,39 @@ class Metadata extends XmlElement
     public static function fromXml(\DOMElement $element): self
     {
         return new self(self::parse($element));
+    }
+
+    public function toArray(string $defaultLocale): array
+    {
+        $data = parent::toArray($defaultLocale);
+
+        foreach (self::TRANSLATABLE_FIELDS as $TRANSLATABLE_FIELD) {
+            $translatableField = self::kebabCaseToCamelCase($TRANSLATABLE_FIELD);
+
+            $data[$translatableField] = $this->ensureTranslationForDefaultLanguageExist(
+                $data[$translatableField],
+                $defaultLocale
+            );
+        }
+
+        return $data;
+    }
+
+    public function validateTranslations(): ?MissingTranslationError
+    {
+        // used locales are valid, see Manifest::createFromXmlFile()
+        $usedLocales = array_keys(array_merge($this->getDescription(), $this->getPrivacyPolicyExtensions()));
+
+        // label is required in app_translation and must therefore be available in all languages
+        $diff = array_diff($usedLocales, array_keys($this->getLabel()));
+
+        if (empty($diff)) {
+            return null;
+        }
+
+        $missingTranslations['label'] = $diff;
+
+        return new MissingTranslationError(self::class, $missingTranslations);
     }
 
     public function getLabel(): array
@@ -106,6 +155,11 @@ class Metadata extends XmlElement
         return $this->privacy;
     }
 
+    public function getPrivacyPolicyExtensions(): array
+    {
+        return $this->privacyPolicyExtensions;
+    }
+
     private static function parse(\DOMElement $element): array
     {
         $values = [];
@@ -116,7 +170,7 @@ class Metadata extends XmlElement
             }
 
             // translated
-            if (in_array($child->tagName, ['label', 'description'], true)) {
+            if (\in_array($child->tagName, self::TRANSLATABLE_FIELDS, true)) {
                 $values = self::mapTranslatedTag($child, $values);
 
                 continue;

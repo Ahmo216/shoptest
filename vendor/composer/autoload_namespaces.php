@@ -10,6 +10,5 @@ return array(
     'Smalot\\PdfParser\\' => array($vendorDir . '/smalot/pdfparser/src'),
     'Sabberworm\\CSS' => array($vendorDir . '/sabberworm/php-css-parser/lib'),
     'Rize\\UriTemplate' => array($vendorDir . '/rize/uri-template/src'),
-    'ProxyManager\\' => array($vendorDir . '/ocramius/proxy-manager/src'),
     'HTMLPurifier' => array($vendorDir . '/ezyang/htmlpurifier/library'),
 );

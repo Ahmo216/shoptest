@@ -291,36 +291,17 @@ export default function createLoginService(httpClient, context, bearerAuth = nul
     }
 
     /**
-     * Returns the expiry date of the token as an unix timestamp.
+     * Checks if the user is logged in by checking if the bearer token exists
+     * in the cookies.
      *
-     * @memberOf module:core/service/login
-     * @returns {Boolean|String|Number}
-     */
-    function getExpiry() {
-        return getBearerAuthentication('expiry');
-    }
-
-    /**
-     * Validates the token using the current time (based on the OS system clock of the user) and the server time.
-     *
-     * @memberOf module:core/service/login
-     * @param {Number} expiry - Expiry date as an unix timestamp
-     * @returns {Boolean}
-     */
-    function validateExpiry(expiry) {
-        const timestamp = Math.round(+new Date() / 1000);
-        return (expiry - timestamp) > 0;
-    }
-
-    /**
-     * Checks if the user is logged in using the expiry time provided by the authentication end point.
+     * A check for expiration is not possible because the refresh token is longer
+     * valid then the normal token.
      *
      * @memberOf module:core/service/login
      * @returns {Boolean}
      */
     function isLoggedIn() {
-        const bearerAuthExpiry = getExpiry();
-        return validateExpiry(bearerAuthExpiry);
+        return !!getToken();
     }
 
     /**
@@ -338,7 +319,16 @@ export default function createLoginService(httpClient, context, bearerAuth = nul
      * @returns {CookieStorage}
      */
     function cookieStorageFactory() {
-        const domain = context.host;
+        let domain;
+
+        if (typeof window === 'object') {
+            domain = window.location.hostname;
+        } else {
+            // eslint-disable-next-line no-restricted-globals
+            const url = new URL(self.location.origin);
+            domain = url.hostname;
+        }
+
         const path = context.basePath + context.pathInfo;
 
         // Set default cookie values
@@ -353,7 +343,7 @@ export default function createLoginService(httpClient, context, bearerAuth = nul
     }
 
     /**
-     * @deprecated 6.3.0
+     * @deprecated tag:v6.4.0
      * It resets the old localStorage implementation of the authentication.
      * Can be removed in 6.3.0 because it is only needed for upgrading from
      * 6.1 to 6.2

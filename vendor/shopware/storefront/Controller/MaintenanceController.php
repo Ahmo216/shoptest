@@ -4,6 +4,7 @@ namespace Shopware\Storefront\Controller;
 
 use Shopware\Core\Content\Cms\Exception\PageNotFoundException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Routing\Exception\MissingRequestParameterException;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
@@ -45,8 +46,9 @@ class MaintenanceController extends StorefrontController
     }
 
     /**
+     * @Since("6.1.0.0")
      * @HttpCache()
-     * @Route("/maintenance", name="frontend.maintenance.page", methods={"GET"})
+     * @Route("/maintenance", name="frontend.maintenance.page", methods={"GET"}, defaults={"allow_maintenance"=true})
      */
     public function renderMaintenancePage(Request $request, SalesChannelContext $context): ?Response
     {
@@ -84,10 +86,11 @@ class MaintenanceController extends StorefrontController
     }
 
     /**
+     * @Since("6.1.0.0")
      * Route for stand alone cms pages during maintenance
      *
      * @HttpCache()
-     * @Route("/maintenance/singlepage/{id}", name="frontend.maintenance.singlepage", methods={"GET"})
+     * @Route("/maintenance/singlepage/{id}", name="frontend.maintenance.singlepage", methods={"GET"}, defaults={"allow_maintenance"=true})
      *
      * @throws MissingRequestParameterException
      * @throws PageNotFoundException

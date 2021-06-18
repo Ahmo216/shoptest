@@ -3,7 +3,7 @@ const ModuleFactory = Module;
 const register = ModuleFactory.register;
 
 // Disable developer hints in jest output
-jest.spyOn(global.console, 'warn').mockImplementation(() => jest.fn());
+const spy = jest.spyOn(global.console, 'warn').mockImplementation(() => jest.fn());
 
 // We're clearing the modules registry to register the same module multiple times throughout the test suite
 beforeEach(() => {
@@ -413,5 +413,100 @@ describe('core/factory/module.factory.js', () => {
         });
 
         expect(Shopware.State.get('settingsItems').settingsGroups).toEqual({});
+    });
+
+    /**
+     * @deprecated tag:v6.4.0
+     */
+    test('should trigger a deprecation warning when a plugin tries to add a menu entry on the first level', () => {
+        Shopware.Feature.isActive = () => false;
+
+        const pluginModule = register('sw-foo', {
+            type: 'plugin',
+            routes: {
+                index: {
+                    path: 'index',
+                    component: 'sw-foo-bar-index'
+                }
+            },
+            navigation: [{
+                icon: 'box',
+                color: '#f00',
+                label: 'FooIndex',
+                path: 'sw.foo.index'
+            }]
+        });
+
+        // Register a module of type plugin without a "parent" in the navigation object
+        expect(pluginModule.type).toBe('plugin');
+        expect(pluginModule.navigation).toBeInstanceOf(Array);
+        expect(pluginModule.navigation.length).toBe(1);
+
+        // Check for the warning inside the console
+        expect(spy).toHaveBeenCalledWith(
+            '[ModuleFactory]',
+            'Navigation entries from plugins are not allowed on the first level.',
+            'The support for first level entries for plugins will be removed in 6.4.0'
+        );
+    });
+
+    test('should not allow plugin modules to create menu entries on first level', () => {
+        Shopware.Feature.isActive = () => true;
+
+        const pluginModule = register('sw-foo', {
+            type: 'plugin',
+            routes: {
+                index: {
+                    path: 'index',
+                    component: 'sw-foo-bar-index'
+                }
+            },
+            navigation: [{
+                icon: 'box',
+                color: '#f00',
+                label: 'FooIndex',
+                path: 'sw.foo.index'
+            }]
+        });
+
+        // Register a module of type plugin without a "parent" in the navigation object
+        expect(pluginModule.type).toBe('plugin');
+        expect(pluginModule.navigation).toBeInstanceOf(Array);
+        expect(pluginModule.navigation.length).toBe(0);
+
+        // Check for the warning inside the console
+        expect(spy).toHaveBeenCalledWith(
+            '[ModuleFactory]',
+            'Navigation entries from plugins are not allowed on the first level.',
+            'Set a property "parent" to register your navigation entry'
+        );
+    });
+
+    test('should allow core modules to create menu entries on first level', () => {
+        Shopware.Feature.isActive = () => true;
+
+        // Check a core module without a "parent" in the navigation object
+        const coreModule = register('sw-foobar', {
+            type: 'core',
+            routes: {
+                index: {
+                    path: 'index',
+                    component: 'sw-foobar-bar-index'
+                }
+            },
+            navigation: [{
+                icon: 'box',
+                color: '#f00',
+                label: 'FooIndex',
+                path: 'sw.foobar.index'
+            }]
+        });
+
+        expect(typeof coreModule.type).toBe('string');
+        expect(coreModule.type).toBe('core');
+        expect(coreModule.navigation).toBeInstanceOf(Array);
+        expect(coreModule.navigation.length).toBe(1);
+
+        expect(spy).not.toHaveBeenCalled();
     });
 });

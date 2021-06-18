@@ -21,6 +21,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\Entity\SalesChannelRepositoryInterface;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
@@ -84,15 +85,17 @@ class ProductCrossSellingRoute extends AbstractProductCrossSellingRoute
     }
 
     /**
+     * @Since("6.3.2.0")
      * @OA\Post(
      *      path="/product/{productId}/cross-selling",
-     *      description="This route is used to load the cross sellings for a product. A product has several cross selling definitions in which several products are linked. The route returns the cross sellings together with the linked products",
+     *      summary="This route is used to load the cross sellings for a product. A product has several cross selling definitions in which several products are linked. The route returns the cross sellings together with the linked products",
      *      operationId="readProductCrossSellings",
      *      tags={"Store API","Product"},
+     *      @OA\Parameter(name="productId", description="Product ID", @OA\Schema(type="string"), in="path", required=true),
      *      @OA\Response(
      *          response="200",
      *          description="Found cross sellings",
-     *          @OA\JsonContent(ref="#/definitions/CrossSellingElementCollection")
+     *          @OA\JsonContent(ref="#/components/schemas/CrossSellingElementCollection")
      *     )
      * )
      * @Route("/store-api/v{version}/product/{productId}/cross-selling", name="store-api.product.cross-selling", methods={"POST"})
@@ -184,7 +187,7 @@ class ProductCrossSellingRoute extends AbstractProductCrossSellingRoute
             ProductVisibilityDefinition::VISIBILITY_LINK
         );
 
-        if (!count($ids)) {
+        if (!\count($ids)) {
             return null;
         }
 

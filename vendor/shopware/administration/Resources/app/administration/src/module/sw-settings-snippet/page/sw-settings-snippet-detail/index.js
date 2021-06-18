@@ -11,7 +11,7 @@ Component.register('sw-settings-snippet-detail', {
     inject: [
         'snippetService', // @deprecated tag:v6.4.0.0
         'snippetSetService',
-        'userService',
+        'userService', // @deprecated tag:v6.4.0.0
         'repositoryFactory',
         'acl'
     ],
@@ -82,6 +82,17 @@ Component.register('sw-settings-snippet-detail', {
                 return new ShopwareError({ code: 'DUPLICATED_SNIPPET_KEY', parameters: { key: this.translationKey } });
             }
             return null;
+        },
+
+        /* @deprecated tag:v6.4.0 will be read only in v.6.4.0 */
+        currentAuthor: {
+            get() {
+                return this._currentAuthor ||
+                    `user/${Shopware.State.get('session').currentUser.username}`;
+            },
+            set(currentAuthor) {
+                this._currentAuthor = currentAuthor;
+            }
         }
     },
 
@@ -97,9 +108,6 @@ Component.register('sw-settings-snippet-detail', {
 
         prepareContent() {
             this.isLoading = true;
-            this.userService.getUser().then((response) => {
-                this.currentAuthor = `user/${response.data.username}`;
-            });
 
             if (!this.$route.params.key && !this.isCreate) {
                 this.onNewKeyRedirect();
@@ -213,12 +221,9 @@ Component.register('sw-settings-snippet-detail', {
                     snippet.translationKey = this.translationKey;
                     snippet.id = null;
                     responses.push(this.snippetService.save(snippet));
-                } else if (snippet.origin !== snippet.value) {
+                } else if (snippet.origin !== snippet.value || snippet.origin.length <= 0) {
                     // Only save if values differs from origin
                     responses.push(this.snippetService.save(snippet));
-                } else if (snippet.hasOwnProperty('id') && snippet.id !== null) {
-                    // There's no need to keep a snippet which is exactly like the file-snippet, so delete
-                    responses.push(this.snippetService.delete(snippet.id));
                 }
             });
 
@@ -297,7 +302,7 @@ Component.register('sw-settings-snippet-detail', {
         checkIsSaveable() {
             let count = 0;
             this.snippets.forEach((snippet) => {
-                if (snippet.value === null || snippet.value.trim() === '') {
+                if (snippet.value === null) {
                     return;
                 }
 
@@ -305,11 +310,7 @@ Component.register('sw-settings-snippet-detail', {
                     count += 1;
                 }
 
-                if (snippet.origin === snippet.value) {
-                    return;
-                }
-
-                if (snippet.value.trim().length > 0) {
+                if (snippet.value.trim().length >= 0) {
                     count += 1;
                 }
             });

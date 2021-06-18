@@ -7,9 +7,11 @@ use Doctrine\DBAL\FetchMode;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Dbal\QueryBuilder;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Term\Filter\AbstractTokenFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Term\SearchPattern;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Term\SearchTerm;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Term\TokenizerInterface;
+use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Uuid\Uuid;
 
 class ProductSearchTermInterpreter implements ProductSearchTermInterpreterInterface
@@ -29,16 +31,30 @@ class ProductSearchTermInterpreter implements ProductSearchTermInterpreterInterf
      */
     private $logger;
 
-    public function __construct(Connection $connection, TokenizerInterface $tokenizer, LoggerInterface $logger)
-    {
+    /**
+     * @var AbstractTokenFilter|null
+     */
+    private $tokenFilter;
+
+    public function __construct(
+        Connection $connection,
+        TokenizerInterface $tokenizer,
+        LoggerInterface $logger,
+        ?AbstractTokenFilter $tokenFilter = null
+    ) {
         $this->connection = $connection;
         $this->tokenizer = $tokenizer;
         $this->logger = $logger;
+        $this->tokenFilter = $tokenFilter;
     }
 
     public function interpret(string $word, Context $context): SearchPattern
     {
         $tokens = $this->tokenizer->tokenize($word);
+
+        if (Feature::isActive('FEATURE_NEXT_10552') && $this->tokenFilter) {
+            $tokens = $this->tokenFilter->filter($tokens, $context);
+        }
 
         $slops = $this->slop($tokens);
 
@@ -100,10 +116,10 @@ class ProductSearchTermInterpreter implements ProductSearchTermInterpreterInterf
 
         foreach ($tokens as $token) {
             $token = (string) $token;
-            $slopSize = \mb_strlen($token) > 4 ? 2 : 1;
-            $length = \mb_strlen($token);
+            $slopSize = mb_strlen($token) > 4 ? 2 : 1;
+            $length = mb_strlen($token);
 
-            if (\mb_strlen($token) <= 2) {
+            if (mb_strlen($token) <= 2) {
                 $slops['normal'][] = $token . '%';
                 $slops['reversed'][] = $token . '%';
 
@@ -115,7 +131,7 @@ class ProductSearchTermInterpreter implements ProductSearchTermInterpreterInterf
                 for ($i2 = 1; $i2 <= $slopSize; ++$i2) {
                     $placeholder = '';
                     for ($i3 = 1; $i3 <= $slopSize + 1; ++$i3) {
-                        $slops['normal'][] = \mb_substr($token, 0, $i) . $placeholder . \mb_substr($token, $i + $i2) . '%';
+                        $slops['normal'][] = mb_substr($token, 0, $i) . $placeholder . mb_substr($token, $i + $i2) . '%';
                         $placeholder .= '_';
                     }
                 }
@@ -126,7 +142,7 @@ class ProductSearchTermInterpreter implements ProductSearchTermInterpreterInterf
                 for ($i2 = 1; $i2 <= $slopSize; ++$i2) {
                     $placeholder = '';
                     for ($i3 = 1; $i3 <= $slopSize + 1; ++$i3) {
-                        $slops['reversed'][] = \mb_substr($token, 0, $i) . $placeholder . \mb_substr($token, $i + $i2) . '%';
+                        $slops['reversed'][] = mb_substr($token, 0, $i) . $placeholder . mb_substr($token, $i + $i2) . '%';
                         $placeholder .= '_';
                     }
                 }

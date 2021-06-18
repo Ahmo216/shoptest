@@ -9,6 +9,7 @@ use Shopware\Core\Content\Sitemap\Service\SitemapListerInterface;
 use Shopware\Core\Content\Sitemap\Struct\SitemapCollection;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\HttpFoundation\Request;
@@ -42,15 +43,16 @@ class SitemapRoute extends AbstractSitemapRoute
     }
 
     /**
+     * @Since("6.3.2.0")
      * @OA\Get(
      *      path="/sitemap",
-     *      description="Sitemap",
+     *      summary="Sitemap",
      *      operationId="readSitemap",
      *      tags={"Store API", "Sitemap"},
      *      @OA\Response(
      *          response="200",
      *          description="",
-     *          @OA\JsonContent(type="array", @OA\Items(ref="#/definitions/Sitemap"))
+     *          @OA\JsonContent(type="array", @OA\Items(ref="#/components/schemas/Sitemap"))
      *     )
      * )
      * @Route(path="/store-api/v{version}/sitemap", name="store-api.sitemap", methods={"GET", "POST"})

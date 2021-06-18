@@ -10,6 +10,7 @@ use Shopware\Core\Checkout\Cart\Event\CheckoutOrderPlacedEvent;
 use Shopware\Core\Checkout\Cart\Order\OrderPersisterInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
+use Shopware\Core\Checkout\Order\SalesChannel\OrderService;
 use Shopware\Core\Checkout\Payment\Exception\InvalidOrderException;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
@@ -17,6 +18,9 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
+use Shopware\Core\Framework\Validation\DataBag\DataBag;
+use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -78,9 +82,10 @@ class CartOrderRoute extends AbstractCartOrderRoute
     }
 
     /**
+     * @Since("6.3.0.0")
      * @OA\Post(
      *      path="/checkout/order",
-     *      description="Create a new order from cart",
+     *      summary="Create a new order from cart",
      *      operationId="createOrder",
      *      tags={"Store API", "Cart"},
      *      @OA\Response(
@@ -91,9 +96,16 @@ class CartOrderRoute extends AbstractCartOrderRoute
      * )
      * @Route("/store-api/v{version}/checkout/order", name="store-api.checkout.cart.order", methods={"POST"})
      */
-    public function order(Cart $cart, SalesChannelContext $context): CartOrderRouteResponse
+    public function order(Cart $cart, SalesChannelContext $context, ?RequestDataBag $data = null): CartOrderRouteResponse
     {
         $calculatedCart = $this->cartCalculator->calculate($cart, $context);
+
+        // @deprecated tag:v6.4.0 - Parameter $data will be mandatory in future implementation
+        if ($data !== null) {
+            $this->addCustomerComment($calculatedCart, $data);
+            $this->addAffiliateTracking($calculatedCart, $data);
+        }
+
         $orderId = $this->orderPersister->persist($calculatedCart, $context);
 
         $criteria = new Criteria([$orderId]);
@@ -140,5 +152,29 @@ class CartOrderRoute extends AbstractCartOrderRoute
         return $this->orderCustomerRepository
             ->search($criteria, $context)
             ->first();
+    }
+
+    private function addCustomerComment(Cart $cart, DataBag $data): void
+    {
+        $customerComment = ltrim(rtrim((string) $data->get(OrderService::CUSTOMER_COMMENT_KEY, '')));
+
+        if ($customerComment === '') {
+            return;
+        }
+
+        $cart->setCustomerComment($customerComment);
+    }
+
+    private function addAffiliateTracking(Cart $cart, DataBag $data): void
+    {
+        $affiliateCode = $data->get(OrderService::AFFILIATE_CODE_KEY);
+        $campaignCode = $data->get(OrderService::CAMPAIGN_CODE_KEY);
+        if ($affiliateCode) {
+            $cart->setAffiliateCode($affiliateCode);
+        }
+
+        if ($campaignCode) {
+            $cart->setCampaignCode($campaignCode);
+        }
     }
 }

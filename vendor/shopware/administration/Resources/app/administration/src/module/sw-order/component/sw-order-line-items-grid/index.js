@@ -104,9 +104,9 @@ Component.register('sw-order-line-items-grid', {
             }, {
                 property: 'totalPrice',
                 dataIndex: 'totalPrice',
-                label: this.taxStatus === 'net' ?
-                    'sw-order.detailBase.columnTotalPriceNet' :
-                    'sw-order.detailBase.columnTotalPriceGross',
+                label: this.taxStatus === 'gross' ?
+                    'sw-order.detailBase.columnTotalPriceGross' :
+                    'sw-order.detailBase.columnTotalPriceNet',
                 allowResize: false,
                 align: 'right',
                 width: '80px'
@@ -245,7 +245,7 @@ Component.register('sw-order-line-items-grid', {
             this.searchTerm = searchTerm.toLowerCase();
         },
 
-        /** @deprecated:v6.4.0 use isCreditItem instead */
+        /** @deprecated tag:v6.4.0 use isCreditItem instead */
         itemIsCredit(id) {
             return this.isCreditItem(id);
         },
@@ -269,7 +269,7 @@ Component.register('sw-order-line-items-grid', {
             }
             return 0;
         },
-        /** @deprecated:v6.4.0 */
+        /** @deprecated tag:v6.4.0 */
         getMaxItemPrice(id) {
             if (!this.isCreditItem(id)) {
                 return null;
@@ -312,6 +312,14 @@ Component.register('sw-order-line-items-grid', {
 
         hasMultipleTaxes(item) {
             return get(item, 'price.calculatedTaxes') && item.price.calculatedTaxes.length > 1;
+        },
+
+        updateItemQuantity(item) {
+            if (item.type !== this.lineItemTypes.CUSTOM) {
+                return;
+            }
+
+            item.priceDefinition.quantity = item.quantity;
         }
     }
 });

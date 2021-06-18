@@ -4,6 +4,7 @@ namespace Shopware\Core\System\Snippet\Api;
 
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\System\Snippet\Files\SnippetFileCollection;
 use Shopware\Core\System\Snippet\SnippetService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -36,6 +37,7 @@ class SnippetController extends AbstractController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/snippet-set", name="api.action.snippet-set.getList", methods={"POST"})
      */
     public function getList(Request $request, Context $context): Response
@@ -52,6 +54,7 @@ class SnippetController extends AbstractController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/{version}/_action/snippet/filter", name="api.action.snippet.get.filter", methods={"GET"})
      */
     public function getFilterItems(Context $context): Response
@@ -59,12 +62,13 @@ class SnippetController extends AbstractController
         $filter = $this->snippetService->getRegionFilterItems($context);
 
         return new JsonResponse([
-            'total' => count($filter),
+            'total' => \count($filter),
             'data' => $filter,
         ]);
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/{version}/_action/snippet-set/baseFile", name="api.action.snippet-set.base-file", methods={"GET"})
      */
     public function getBaseFiles(): Response
@@ -73,11 +77,12 @@ class SnippetController extends AbstractController
 
         return new JsonResponse([
             'items' => $files,
-            'total' => count($files),
+            'total' => \count($files),
         ]);
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/{version}/_action/snippet-set/author", name="api.action.snippet-set.author", methods={"GET"})
      */
     public function getAuthors(Context $context): Response
@@ -85,7 +90,7 @@ class SnippetController extends AbstractController
         $authors = $this->snippetService->getAuthors($context);
 
         return new JsonResponse([
-            'total' => count($authors),
+            'total' => \count($authors),
             'data' => $authors,
         ]);
     }

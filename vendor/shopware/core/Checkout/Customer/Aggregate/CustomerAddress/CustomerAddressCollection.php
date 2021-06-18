@@ -60,6 +60,9 @@ class CustomerAddressCollection extends EntityCollection
         });
     }
 
+    /**
+     * @deprecated tag:v6.4.0 - Will be removed and use CustomerCollection:getListVatIds() instead
+     */
     public function getVatIds(): array
     {
         return $this->fmap(function (CustomerAddressEntity $customerAddress) {
@@ -67,6 +70,9 @@ class CustomerAddressCollection extends EntityCollection
         });
     }
 
+    /**
+     * @deprecated tag:v6.4.0 - Will be removed and use CustomerCollection:filterByVatId() instead
+     */
     public function filterByVatId(string $id): self
     {
         return $this->filter(function (CustomerAddressEntity $customerAddress) use ($id) {

@@ -7,6 +7,9 @@ use Shopware\Core\Framework\DataAbstractionLayer\Entity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityIdTrait;
 use Shopware\Core\System\Language\LanguageEntity;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class AppTranslationEntity extends Entity
 {
     use EntityIdTrait;
@@ -20,6 +23,11 @@ class AppTranslationEntity extends Entity
      * @var string|null
      */
     protected $description;
+
+    /**
+     * @var string|null
+     */
+    protected $privacyPolicyExtensions;
 
     /**
      * @var \DateTimeInterface
@@ -69,6 +77,16 @@ class AppTranslationEntity extends Entity
     public function setDescription(?string $description): void
     {
         $this->description = $description;
+    }
+
+    public function getPrivacyPolicyExtensions(): ?string
+    {
+        return $this->privacyPolicyExtensions;
+    }
+
+    public function setPrivacyPolicyExtensions(?string $privacyPolicyExtensions): void
+    {
+        $this->privacyPolicyExtensions = $privacyPolicyExtensions;
     }
 
     public function getCreatedAt(): ?\DateTimeInterface

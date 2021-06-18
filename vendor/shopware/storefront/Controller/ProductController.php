@@ -5,7 +5,10 @@ namespace Shopware\Storefront\Controller;
 use Shopware\Core\Content\Product\Exception\ReviewNotActiveExeption;
 use Shopware\Core\Content\Product\SalesChannel\ProductReviewService;
 use Shopware\Core\Content\Seo\SeoUrlPlaceholderHandlerInterface;
+use Shopware\Core\Framework\Feature;
+use Shopware\Core\Framework\Routing\Annotation\LoginRequired;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\Framework\Validation\Exception\ConstraintViolationException;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -80,6 +83,7 @@ class ProductController extends StorefrontController
     }
 
     /**
+     * @Since("6.3.3.0")
      * @HttpCache()
      * @Route("/detail/{productId}", name="frontend.detail.page", methods={"GET"})
      */
@@ -89,10 +93,20 @@ class ProductController extends StorefrontController
 
         $ratingSuccess = $request->get('success');
 
-        return $this->renderStorefront('@Storefront/storefront/page/product-detail/index.html.twig', ['page' => $page, 'ratingSuccess' => $ratingSuccess]);
+        if (!Feature::isActive('FEATURE_NEXT_10078')) {
+            return $this->renderStorefront('@Storefront/storefront/page/product-detail/index.html.twig', ['page' => $page, 'ratingSuccess' => $ratingSuccess]);
+        }
+
+        // Fallback layout for non-assigned product layout
+        if (!$page->getCmsPage()) {
+            return $this->renderStorefront('@Storefront/storefront/page/product-detail/index.html.twig', ['page' => $page, 'ratingSuccess' => $ratingSuccess]);
+        }
+
+        return $this->renderStorefront('@Storefront/storefront/page/content/product-detail.html.twig', ['page' => $page]);
     }
 
     /**
+     * @Since("6.0.0.0")
      * @HttpCache()
      * @Route("/detail/{productId}/switch", name="frontend.detail.switch", methods={"GET"}, defaults={"XmlHttpRequest": true})
      */
@@ -120,6 +134,7 @@ class ProductController extends StorefrontController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/quickview/{productId}", name="widgets.quickview.minimal", methods={"GET"}, defaults={"XmlHttpRequest": true})
      */
     public function quickviewMinimal(Request $request, SalesChannelContext $context): Response
@@ -130,13 +145,13 @@ class ProductController extends StorefrontController
     }
 
     /**
+     * @Since("6.0.0.0")
+     * @LoginRequired()
      * @Route("/product/{productId}/rating", name="frontend.detail.review.save", methods={"POST"}, defaults={"XmlHttpRequest"=true})
      */
     public function saveReview(string $productId, RequestDataBag $data, SalesChannelContext $context): Response
     {
         $this->checkReviewsActive($context);
-
-        $this->denyAccessUnlessLoggedIn();
 
         try {
             $this->productReviewService->save($productId, $data, $context);
@@ -164,6 +179,7 @@ class ProductController extends StorefrontController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/product/{productId}/reviews", name="frontend.product.reviews", methods={"GET","POST"}, defaults={"XmlHttpRequest"=true})
      */
     public function loadReviews(Request $request, RequestDataBag $data, SalesChannelContext $context): Response

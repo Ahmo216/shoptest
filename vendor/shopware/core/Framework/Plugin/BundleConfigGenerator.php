@@ -11,7 +11,6 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin;
 use Shopware\Core\Kernel;
 use Shopware\Core\System\Annotation\Concept\ExtensionPattern\Decoratable;
-use Symfony\Component\Finder\Finder;
 use Symfony\Component\Serializer\NameConverter\CamelCaseToSnakeCaseNameConverter;
 
 /**
@@ -47,7 +46,12 @@ class BundleConfigGenerator implements BundleConfigGeneratorInterface
         $this->kernel = $kernel;
         $this->pluginRepository = $pluginRepository;
         $this->activeAppsLoader = $activeAppsLoader;
-        $this->projectDir = $this->kernel->getContainer()->getParameter('kernel.project_dir');
+
+        $projectDir = $this->kernel->getContainer()->getParameter('kernel.project_dir');
+        if (!\is_string($projectDir)) {
+            throw new \RuntimeException('Container parameter "kernel.project_dir" needs to be a string');
+        }
+        $this->projectDir = $projectDir;
     }
 
     public function getConfig(): array
@@ -76,7 +80,7 @@ class BundleConfigGenerator implements BundleConfigGeneratorInterface
             }
 
             // dont include deactivated plugins
-            if ($bundle instanceof Plugin && !in_array($bundle->getName(), $activePlugins, true)) {
+            if ($bundle instanceof Plugin && !\in_array($bundle->getName(), $activePlugins, true)) {
                 continue;
             }
 
@@ -99,7 +103,7 @@ class BundleConfigGenerator implements BundleConfigGeneratorInterface
                     'path' => 'Resources/app/storefront/src',
                     'entryFilePath' => $this->getEntryFile($bundle->getPath(), 'Resources/app/storefront/src'),
                     'webpack' => $this->getWebpackConfig($bundle->getPath(), 'Resources/app/storefront'),
-                    'styleFiles' => $this->getStyleFiles($bundle->getPath(), $bundle->getName()),
+                    'styleFiles' => $this->getStyleFiles($bundle->getName()),
                 ],
             ];
         }
@@ -121,7 +125,7 @@ class BundleConfigGenerator implements BundleConfigGeneratorInterface
                     'path' => 'Resources/app/storefront/src',
                     'entryFilePath' => $this->getEntryFile($absolutePath, 'Resources/app/storefront/src'),
                     'webpack' => $this->getWebpackConfig($absolutePath, 'Resources/app/storefront'),
-                    'styleFiles' => $this->getStyleFiles($absolutePath, $app['name']),
+                    'styleFiles' => $this->getStyleFiles($app['name']),
                 ],
             ];
         }
@@ -151,30 +155,20 @@ class BundleConfigGenerator implements BundleConfigGeneratorInterface
         return $path . '/build/webpack.config.js';
     }
 
-    private function getStyleFiles(string $rootPath, string $technicalName): array
+    private function getStyleFiles(string $technicalName): array
     {
-        $files = [];
-        if ($this->kernel->getContainer()->has('Shopware\Storefront\Theme\StorefrontPluginRegistry')) {
-            $registry = $this->kernel->getContainer()->get('Shopware\Storefront\Theme\StorefrontPluginRegistry');
-
-            $config = $registry->getConfigurations()->getByTechnicalName($technicalName);
-
-            if ($config) {
-                return $config->getStyleFiles()->getFilepaths();
-            }
+        if (!$this->kernel->getContainer()->has('Shopware\Storefront\Theme\StorefrontPluginRegistry')) {
+            return [];
         }
 
-        $path = $rootPath . DIRECTORY_SEPARATOR . 'Resources/app/storefront/src/scss';
-        if (is_dir($path)) {
-            $finder = new Finder();
-            $finder->in($path)->files()->depth(0);
+        $registry = $this->kernel->getContainer()->get('Shopware\Storefront\Theme\StorefrontPluginRegistry');
+        $config = $registry->getConfigurations()->getByTechnicalName($technicalName);
 
-            foreach ($finder->getIterator() as $file) {
-                $files[] = $file->getPathname();
-            }
+        if (!$config) {
+            return [];
         }
 
-        return $files;
+        return $config->getStyleFiles()->getFilepaths();
     }
 
     private function asSnakeCase(string $string): string

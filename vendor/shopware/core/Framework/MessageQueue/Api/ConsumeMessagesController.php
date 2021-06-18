@@ -3,7 +3,9 @@
 namespace Shopware\Core\Framework\MessageQueue\Api;
 
 use Shopware\Core\Framework\MessageQueue\Subscriber\CountHandledMessagesListener;
+use Shopware\Core\Framework\MessageQueue\Subscriber\EarlyReturnMessagesListener;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -51,13 +53,19 @@ class ConsumeMessagesController extends AbstractController
      */
     private $dispatchPcntlSignalListener;
 
+    /**
+     * @var EarlyReturnMessagesListener
+     */
+    private $earlyReturnListener;
+
     public function __construct(
         ServiceLocator $receiverLocator,
         MessageBusInterface $bus,
         int $pollInterval,
         StopWorkerOnRestartSignalListener $stopWorkerOnRestartSignalListener,
         StopWorkerOnSigtermSignalListener $stopWorkerOnSigtermSignalListener,
-        DispatchPcntlSignalListener $dispatchPcntlSignalListener
+        DispatchPcntlSignalListener $dispatchPcntlSignalListener,
+        EarlyReturnMessagesListener $earlyReturnListener
     ) {
         $this->receiverLocator = $receiverLocator;
         $this->bus = $bus;
@@ -65,9 +73,11 @@ class ConsumeMessagesController extends AbstractController
         $this->stopWorkerOnRestartSignalListener = $stopWorkerOnRestartSignalListener;
         $this->stopWorkerOnSigtermSignalListener = $stopWorkerOnSigtermSignalListener;
         $this->dispatchPcntlSignalListener = $dispatchPcntlSignalListener;
+        $this->earlyReturnListener = $earlyReturnListener;
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/api/v{version}/_action/message-queue/consume", name="api.action.message-queue.consume", methods={"POST"})
      */
     public function consumeMessages(Request $request): JsonResponse
@@ -86,10 +96,11 @@ class ConsumeMessagesController extends AbstractController
         $workerDispatcher->addSubscriber($this->stopWorkerOnRestartSignalListener);
         $workerDispatcher->addSubscriber($this->stopWorkerOnSigtermSignalListener);
         $workerDispatcher->addSubscriber($this->dispatchPcntlSignalListener);
+        $workerDispatcher->addSubscriber($this->earlyReturnListener);
 
         $worker = new Worker([$receiver], $this->bus, $workerDispatcher);
 
-        $worker->run();
+        $worker->run(['sleep' => 50]);
 
         return $this->json(['handledMessages' => $listener->getHandledMessages()]);
     }

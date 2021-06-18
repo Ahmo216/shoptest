@@ -30,7 +30,7 @@ class ApiRequestContextResolverAppTest extends TestCase
         $this->loadAppsFromDir(__DIR__ . '/../App/Manifest/_fixtures/test');
 
         $browser = $this->createClient();
-        $this->authorizeBrowserWithIntegrationByAppName($this->getBrowser(), 'SwagApp');
+        $this->authorizeBrowserWithIntegrationByAppName($this->getBrowser(), 'test');
 
         $browser->request('GET', '/api/v' . PlatformRequest::API_VERSION . '/product');
         $response = $browser->getResponse();
@@ -43,7 +43,7 @@ class ApiRequestContextResolverAppTest extends TestCase
         $this->loadAppsFromDir(__DIR__ . '/../App/Manifest/_fixtures/test');
 
         $browser = $this->createClient();
-        $this->authorizeBrowserWithIntegrationByAppName($browser, 'SwagApp');
+        $this->authorizeBrowserWithIntegrationByAppName($browser, 'test');
 
         $browser->request('GET', '/api/v' . PlatformRequest::API_VERSION . '/media');
 
@@ -55,7 +55,7 @@ class ApiRequestContextResolverAppTest extends TestCase
         $this->loadAppsFromDir(__DIR__ . '/../App/Manifest/_fixtures/minimal');
 
         $browser = $this->createClient();
-        $this->authorizeBrowserWithIntegrationByAppName($browser, 'SwagAppMinimal');
+        $this->authorizeBrowserWithIntegrationByAppName($browser, 'minimal');
 
         $browser->request('GET', '/api/v' . PlatformRequest::API_VERSION . '/product');
 
@@ -70,7 +70,7 @@ class ApiRequestContextResolverAppTest extends TestCase
         $this->loadAppsFromDir(__DIR__ . '/../App/Manifest/_fixtures/minimal');
 
         $browser = $this->createClient();
-        $this->authorizeBrowserWithIntegrationByAppName($browser, 'SwagAppMinimal');
+        $this->authorizeBrowserWithIntegrationByAppName($browser, 'minimal');
 
         $browser->request(
             'POST',
@@ -78,7 +78,7 @@ class ApiRequestContextResolverAppTest extends TestCase
             [],
             [],
             [],
-            \json_encode($this->getProductData($productId, $context))
+            json_encode($this->getProductData($productId, $context))
         );
         $response = $browser->getResponse();
 
@@ -97,7 +97,7 @@ class ApiRequestContextResolverAppTest extends TestCase
         $this->loadAppsFromDir(__DIR__ . '/../App/Manifest/_fixtures/test');
 
         $browser = $this->createClient();
-        $this->authorizeBrowserWithIntegrationByAppName($browser, 'SwagApp');
+        $this->authorizeBrowserWithIntegrationByAppName($browser, 'test');
 
         $browser->request(
             'POST',
@@ -105,7 +105,7 @@ class ApiRequestContextResolverAppTest extends TestCase
             [],
             [],
             [],
-            \json_encode($this->getProductData($productId, $context))
+            json_encode($this->getProductData($productId, $context))
         );
 
         static::assertEquals(204, $browser->getResponse()->getStatusCode());
@@ -128,7 +128,7 @@ class ApiRequestContextResolverAppTest extends TestCase
         $this->loadAppsFromDir(__DIR__ . '/../App/Manifest/_fixtures/test');
 
         $browser = $this->createClient();
-        $this->authorizeBrowserWithIntegrationByAppName($browser, 'SwagApp');
+        $this->authorizeBrowserWithIntegrationByAppName($browser, 'test');
 
         $browser->request(
             'PATCH',
@@ -136,7 +136,7 @@ class ApiRequestContextResolverAppTest extends TestCase
             [],
             [],
             [],
-            \json_encode([
+            json_encode([
                 'name' => $newName,
             ])
         );
@@ -171,7 +171,7 @@ class ApiRequestContextResolverAppTest extends TestCase
 
         $data = json_decode($browser->getResponse()->getContent(), true);
 
-        if (!array_key_exists('access_token', $data)) {
+        if (!\array_key_exists('access_token', $data)) {
             throw new \RuntimeException(
                 'No token returned from API: ' . ($data['errors'][0]['detail'] ?? 'unknown error' . print_r($data, true))
             );

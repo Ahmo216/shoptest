@@ -5,7 +5,9 @@ namespace Shopware\Core\Content\Cms;
 use Shopware\Core\Content\Category\CategoryCollection;
 use Shopware\Core\Content\Cms\Aggregate\CmsSection\CmsSectionCollection;
 use Shopware\Core\Content\Cms\Aggregate\CmsSlot\CmsSlotEntity;
+use Shopware\Core\Content\LandingPage\LandingPageCollection;
 use Shopware\Core\Content\Media\MediaEntity;
+use Shopware\Core\Content\Product\ProductCollection;
 use Shopware\Core\Framework\DataAbstractionLayer\Entity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityCollection;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityIdTrait;
@@ -25,7 +27,7 @@ class CmsPageEntity extends Entity
     protected $type;
 
     /**
-     * @var string
+     * @var string|null
      */
     protected $entity;
 
@@ -43,6 +45,13 @@ class CmsPageEntity extends Entity
      * @var CategoryCollection|null
      */
     protected $categories;
+
+    /**
+     * @internal (flag:FEATURE_NEXT_10078)
+     *
+     * @var ProductCollection|null
+     */
+    protected $products;
 
     /**
      * @var array|null
@@ -69,6 +78,13 @@ class CmsPageEntity extends Entity
      */
     protected $locked;
 
+    /**
+     * @internal (flag:FEATURE_NEXT_12032)
+     *
+     * @var LandingPageCollection|null
+     */
+    protected $landingPages;
+
     public function getName(): string
     {
         return $this->name;
@@ -89,12 +105,12 @@ class CmsPageEntity extends Entity
         $this->type = $type;
     }
 
-    public function getEntity(): string
+    public function getEntity(): ?string
     {
         return $this->entity;
     }
 
-    public function setEntity(string $entity): void
+    public function setEntity(?string $entity): void
     {
         $this->entity = $entity;
     }
@@ -137,6 +153,22 @@ class CmsPageEntity extends Entity
     public function setCategories(CategoryCollection $categories): void
     {
         $this->categories = $categories;
+    }
+
+    /**
+     *@internal (flag:FEATURE_NEXT_10078)
+     */
+    public function getProducts(): ?ProductCollection
+    {
+        return $this->products;
+    }
+
+    /**
+     *@internal (flag:FEATURE_NEXT_10078)
+     */
+    public function setProducts(ProductCollection $products): void
+    {
+        $this->products = $products;
     }
 
     public function getConfig(): ?array
@@ -184,6 +216,22 @@ class CmsPageEntity extends Entity
         $elements = $this->getElementsOfType($type);
 
         return array_shift($elements);
+    }
+
+    /**
+     * @internal (flag:FEATURE_NEXT_12032)
+     */
+    public function getLandingPages(): ?LandingPageCollection
+    {
+        return $this->landingPages;
+    }
+
+    /**
+     * @internal (flag:FEATURE_NEXT_12032)
+     */
+    public function setLandingPages(LandingPageCollection $landingPages): void
+    {
+        $this->landingPages = $landingPages;
     }
 
     public function getElementsOfType(string $type): array

@@ -7,18 +7,20 @@ use Shopware\Core\Checkout\Cart\Exception\CartTokenNotFoundException;
 use Shopware\Core\Checkout\Cart\Exception\CustomerNotLoggedInException;
 use Shopware\Core\Checkout\Cart\Exception\OrderNotFoundException;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
+use Shopware\Core\Checkout\Customer\SalesChannel\AbstractLogoutRoute;
 use Shopware\Core\Checkout\Order\Exception\EmptyCartException;
 use Shopware\Core\Checkout\Order\SalesChannel\OrderService;
 use Shopware\Core\Checkout\Payment\Exception\InvalidOrderException;
 use Shopware\Core\Checkout\Payment\Exception\PaymentProcessException;
 use Shopware\Core\Checkout\Payment\Exception\UnknownPaymentMethodException;
 use Shopware\Core\Checkout\Payment\PaymentService;
-use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
+use Shopware\Core\Framework\Routing\Annotation\Since;
 use Shopware\Core\Framework\Routing\Exception\MissingRequestParameterException;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\Framework\Validation\Exception\ConstraintViolationException;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Shopware\Storefront\Framework\AffiliateTracking\AffiliateTrackingListener;
 use Shopware\Storefront\Page\Checkout\Cart\CheckoutCartPageLoader;
 use Shopware\Storefront\Page\Checkout\Confirm\CheckoutConfirmPageLoader;
@@ -70,6 +72,16 @@ class CheckoutController extends StorefrontController
      */
     private $offcanvasCartPageLoader;
 
+    /**
+     * @var SystemConfigService
+     */
+    private $config;
+
+    /**
+     * @var AbstractLogoutRoute
+     */
+    private $logoutRoute;
+
     public function __construct(
         CartService $cartService,
         CheckoutCartPageLoader $cartPageLoader,
@@ -77,7 +89,9 @@ class CheckoutController extends StorefrontController
         CheckoutFinishPageLoader $finishPageLoader,
         OrderService $orderService,
         PaymentService $paymentService,
-        OffcanvasCartPageLoader $offcanvasCartPageLoader
+        OffcanvasCartPageLoader $offcanvasCartPageLoader,
+        SystemConfigService $config,
+        AbstractLogoutRoute $logoutRoute
     ) {
         $this->cartService = $cartService;
         $this->cartPageLoader = $cartPageLoader;
@@ -86,9 +100,12 @@ class CheckoutController extends StorefrontController
         $this->orderService = $orderService;
         $this->paymentService = $paymentService;
         $this->offcanvasCartPageLoader = $offcanvasCartPageLoader;
+        $this->config = $config;
+        $this->logoutRoute = $logoutRoute;
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/checkout/cart", name="frontend.checkout.cart.page", options={"seo"="false"}, methods={"GET"})
      */
     public function cartPage(Request $request, SalesChannelContext $context): Response
@@ -99,6 +116,7 @@ class CheckoutController extends StorefrontController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/checkout/confirm", name="frontend.checkout.confirm.page", options={"seo"="false"}, methods={"GET"}, defaults={"XmlHttpRequest"=true})
      */
     public function confirmPage(Request $request, SalesChannelContext $context): Response
@@ -117,6 +135,7 @@ class CheckoutController extends StorefrontController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/checkout/finish", name="frontend.checkout.finish.page", options={"seo"="false"}, methods={"GET"})
      *
      * @throws CustomerNotLoggedInException
@@ -125,7 +144,7 @@ class CheckoutController extends StorefrontController
      */
     public function finishPage(Request $request, SalesChannelContext $context): Response
     {
-        if (!$context->getCustomer()) {
+        if ($context->getCustomer() === null) {
             return $this->redirectToRoute('frontend.checkout.register.page');
         }
 
@@ -144,10 +163,15 @@ class CheckoutController extends StorefrontController
             );
         }
 
+        if ($context->getCustomer()->getGuest() && $this->config->get('core.cart.logoutGuestAfterCheckout', $context->getSalesChannelId())) {
+            $this->logoutRoute->logout($context);
+        }
+
         return $this->renderStorefront('@Storefront/storefront/page/checkout/finish/index.html.twig', ['page' => $page]);
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/checkout/order", name="frontend.checkout.finish.order", options={"seo"="false"}, methods={"POST"})
      */
     public function order(RequestDataBag $data, SalesChannelContext $context, Request $request): Response
@@ -180,6 +204,7 @@ class CheckoutController extends StorefrontController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/widgets/checkout/info", name="frontend.checkout.info", methods={"GET"}, defaults={"XmlHttpRequest"=true})
      *
      * @throws CartTokenNotFoundException
@@ -192,6 +217,7 @@ class CheckoutController extends StorefrontController
     }
 
     /**
+     * @Since("6.0.0.0")
      * @Route("/checkout/offcanvas", name="frontend.cart.offcanvas", options={"seo"="false"}, methods={"GET"}, defaults={"XmlHttpRequest"=true})
      *
      * @throws CartTokenNotFoundException
@@ -199,12 +225,10 @@ class CheckoutController extends StorefrontController
     public function offcanvas(Request $request, SalesChannelContext $context): Response
     {
         $page = $this->offcanvasCartPageLoader->load($request, $context);
-        if (Feature::isActive('FEATURE_NEXT_10058')) {
-            if ($request->cookies->get('sf_redirect') === null) {
-                $cart = $page->getCart();
-                $this->addCartErrors($cart);
-                $cart->getErrors()->clear();
-            }
+        if ($request->cookies->get('sf_redirect') === null) {
+            $cart = $page->getCart();
+            $this->addCartErrors($cart);
+            $cart->getErrors()->clear();
         }
 
         return $this->renderStorefront('@Storefront/storefront/component/checkout/offcanvas-cart.html.twig', ['page' => $page]);
@@ -214,8 +238,11 @@ class CheckoutController extends StorefrontController
     {
         $affiliateCode = $session->get(AffiliateTrackingListener::AFFILIATE_CODE_KEY);
         $campaignCode = $session->get(AffiliateTrackingListener::CAMPAIGN_CODE_KEY);
-        if ($affiliateCode !== null && $campaignCode !== null) {
+        if ($affiliateCode) {
             $dataBag->set(AffiliateTrackingListener::AFFILIATE_CODE_KEY, $affiliateCode);
+        }
+
+        if ($campaignCode) {
             $dataBag->set(AffiliateTrackingListener::CAMPAIGN_CODE_KEY, $campaignCode);
         }
     }

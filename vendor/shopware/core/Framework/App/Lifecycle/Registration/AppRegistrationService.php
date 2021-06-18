@@ -14,6 +14,9 @@ use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 
+/**
+ * @internal only for use by the app-system, will be considered internal from v6.4.0 onward
+ */
 class AppRegistrationService
 {
     /**
@@ -122,11 +125,11 @@ class AppRegistrationService
      */
     private function parseResponse(AppHandshakeInterface $handshake, ResponseInterface $response): array
     {
-        $data = \json_decode($response->getBody()->getContents(), true);
+        $data = json_decode($response->getBody()->getContents(), true);
 
         $proof = $data['proof'] ?? '';
         if (!hash_equals($handshake->fetchAppProof(), trim($proof))) {
-            throw new AppRegistrationException('The app provided a invalid response');
+            throw new AppRegistrationException('The app provided an invalid response');
         }
 
         return $data;
@@ -161,7 +164,7 @@ class AppRegistrationService
      */
     private function signPayload(array $body, string $secret): string
     {
-        return hash_hmac('sha256', (string) \json_encode($body), $secret);
+        return hash_hmac('sha256', (string) json_encode($body), $secret);
     }
 
     private function getApp(string $id, Context $context): AppEntity
