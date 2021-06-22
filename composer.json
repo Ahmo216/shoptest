@@ -33,11 +33,11 @@
     "require": {
         "php": "~7.2",
         "ocramius/package-versions": "1.4.0",
-        "shopware/core": "v6.1.*",
-        "shopware/administration": "v6.1.*",
-        "shopware/storefront": "v6.1.*",
-        "shopware/elasticsearch": "v6.1.*",
-        "shopware/recovery": "v6.1.*"
+        "shopware/core": "v6.0.*",
+        "shopware/administration": "v6.0*",
+        "shopware/storefront": "v6.0.*",
+        "shopware/elasticsearch": "v6.0.*",
+        "shopware/recovery": "v6.0.*"
     },
     "require-dev": {
         "ext-tokenizer": "*",
